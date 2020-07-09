@@ -1,3 +1,7 @@
+fake115uploader
+*.json
+test/
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
