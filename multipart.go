@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
@@ -140,17 +141,20 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	}
 	bar.Finish()
 
+	var header http.Header
 	cmur, err := bucket.CompleteMultipartUpload(imur, parts,
 		oss.SetHeader("x-oss-security-token", ot.SecurityToken),
 		oss.Callback(cb),
 		oss.CallbackVar(cbVar),
 		oss.UserAgentHeader(aliUserAgent),
+		oss.GetResponseHeader(&header),
 	)
-	// 不知为何会有EOF错误，实际上上传是成功的
+	// EOF错误好像是xml的Unmarshal导致的，实际上上传是成功的
 	if err != nil && fmt.Sprint(err) != "EOF" {
 		log.Panicln(err)
 	}
 	if *verbose {
+		log.Printf("CompleteMultipartUpload的响应头的值是：\n%+v", header)
 		log.Printf("cmur的值是：%+v", cmur)
 	}
 
