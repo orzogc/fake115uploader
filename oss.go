@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -124,7 +125,9 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 		//oss.Checkpoint(true, ""),
 	}
 
-	//go getInput()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go getInput(ctx)
 	err = bucket.PutObjectFromFile(ft.Object, file, options...)
 	checkErr(err)
 

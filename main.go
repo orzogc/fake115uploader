@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -8,9 +9,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/eiannone/keyboard"
 	"github.com/valyala/fastjson"
@@ -40,6 +43,7 @@ var (
 	userKey string
 	target  = "U_1_0"
 	config  uploadConfig // 设置数据
+	quit    = make(chan int)
 	// endpoint string
 	// bucketName = "fhnfile"
 )
@@ -57,23 +61,37 @@ func checkErr(err error) {
 }
 
 // 处理输入
-func getInput() {
-	err := keyboard.Open()
+func getInput(ctx context.Context) {
+	eventCh, err := keyboard.GetKeys(10)
 	checkErr(err)
 	defer keyboard.Close()
 	log.Println("按q键退出程序")
+
 	for {
-		char, key, err := keyboard.GetKey()
-		checkErr(err)
-		if string(char) == "q" || string(char) == "Q" {
-			keyboard.Close()
-			os.Exit(0)
-		}
-		if key == keyboard.KeyCtrlC {
-			keyboard.Close()
-			os.Exit(0)
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-eventCh:
+			checkErr(event.Err)
+			if string(event.Rune) == "q" || string(event.Rune) == "Q" || event.Key == keyboard.KeyCtrlC {
+				quit <- 0
+				return
+			}
 		}
 	}
+}
+
+func handleQuit() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
+
+	select {
+	case <-ch:
+	case <-quit:
+	}
+
+	log.Println("退出本程序")
+	os.Exit(0)
 }
 
 // 获取userID和userKey
@@ -157,6 +175,8 @@ func loadConfig() {
 }
 
 func main() {
+	go handleQuit()
+
 	upload := flag.Bool("u", false, "先尝试秒传本地`文件`，失败后再用普通模式上传本地文件")
 	fastUpload := flag.Bool("f", false, "秒传模式上传本地`文件`")
 	cidNum := flag.Uint64("c", 0, "上传本地文件到115，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
