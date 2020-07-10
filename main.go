@@ -92,7 +92,7 @@ func handleQuit() {
 	case <-quit:
 	}
 
-	log.Println("受到退出信号，正在退出本程序")
+	log.Println("收到退出信号，正在退出本程序")
 
 	multipartCh <- 0
 	<-multipartCh
