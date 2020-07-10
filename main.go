@@ -12,16 +12,17 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/eiannone/keyboard"
 	"github.com/valyala/fastjson"
 )
 
 // const listFile = "https://proapi.115.com/android/2.0/ufile/files?offset=0&limit=115&show_dir=1&cid=0"
-// const resumeURL = "https://uplb.115.com/3.0/resumeupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 
 const (
 	infoURL       = "https://proapi.115.com/app/uploadinfo"
 	sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
 	initURL       = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
+	resumeURL     = "https://uplb.115.com/3.0/resumeupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	tokenURL      = "https://uplb.115.com/3.0/gettoken.php"
 	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
@@ -52,6 +53,24 @@ type uploadConfig struct {
 func checkErr(err error) {
 	if err != nil {
 		log.Panicln(err)
+	}
+}
+
+// 处理输入
+func getInput() {
+	err := keyboard.Open()
+	checkErr(err)
+	defer keyboard.Close()
+	log.Println("按q键退出程序")
+	for {
+		char, key, err := keyboard.GetKey()
+		checkErr(err)
+		if string(char) == "q" || string(char) == "Q" {
+			os.Exit(0)
+		}
+		if key == keyboard.KeyCtrlC {
+			os.Exit(0)
+		}
 	}
 }
 
@@ -183,7 +202,7 @@ func main() {
 			token, err := fastUploadFile(file)
 			if err != nil {
 				log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
-				log.Println("现在开始使用普通模式上传")
+				log.Printf("现在开始使用普通模式上传 %s", file)
 				err = ossUploadFile(token, file)
 				if err != nil {
 					log.Printf("普通模式上传 %s 出现错误：%v", file, err)

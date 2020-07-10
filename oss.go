@@ -39,6 +39,7 @@ func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	case oss.TransferStartedEvent:
 		bar = pb.Full.Start64(event.TotalBytes)
 		bar.Set(pb.Bytes, true)
+		bar.Set(pb.SIBytesPrefix, true)
 	case oss.TransferDataEvent:
 		bar.SetCurrent(event.ConsumedBytes)
 	case oss.TransferCompletedEvent:
@@ -112,29 +113,6 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 	bucket, err := client.Bucket(ft.Bucket)
 	checkErr(err)
 
-	/*
-		info, err := os.Stat(file)
-		checkErr(err)
-		var callbackVar cbackVar
-		// 设置callback
-		err = json.Unmarshal([]byte(fToken.Callback.CallbackVar), &callbackVar)
-		checkErr(err)
-		cb := strings.ReplaceAll(fToken.Callback.Callback, "${bucket}", fToken.Bucket)
-		cb = strings.ReplaceAll(cb, "${object}", fToken.Object)
-		cb = strings.ReplaceAll(cb, "${size}", strconv.FormatInt(info.Size(), 10))
-		cb = strings.ReplaceAll(cb, "${x:pick_code}", callbackVar.PickCode)
-		cb = strings.ReplaceAll(cb, "${x:user_id}", callbackVar.UserID)
-		cb = strings.ReplaceAll(cb, "${x:behavior_type}", callbackVar.BehaviorType)
-		cb = strings.ReplaceAll(cb, "${x:source}", callbackVar.Source)
-		cb = strings.ReplaceAll(cb, "${x:target}", callbackVar.Target)
-
-		if *verbose {
-			log.Printf("callback的值：\n%s", cb)
-		}
-
-		cbBase64 := base64.StdEncoding.EncodeToString([]byte(cb))
-	*/
-
 	cb := base64.StdEncoding.EncodeToString([]byte(ft.Callback.Callback))
 	cbVar := base64.StdEncoding.EncodeToString([]byte(ft.Callback.CallbackVar))
 	options := []oss.Option{
@@ -142,31 +120,14 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 		oss.Callback(cb),
 		oss.CallbackVar(cbVar),
 		oss.UserAgentHeader(aliUserAgent),
-		oss.StorageClass(oss.StorageStandard),
 		oss.Progress(&ossProgressListener{}),
-		//oss.Checkpoint(true, cmdPath+filepath.Base(file)+".cp"),
+		//oss.Routines(2),
+		//oss.Checkpoint(true, ""),
 	}
 
+	//go getInput()
 	err = bucket.PutObjectFromFile(ft.Object, file, options...)
 	checkErr(err)
-
-	/*
-		f, err := os.Open(file)
-		checkErr(err)
-		defer f.Close()
-		info, err := f.Stat()
-		checkErr(err)
-
-		var nextPos int64 = 0
-		nextPos, err = bucket.AppendObject(ft.Object, f, nextPos, options...)
-		checkErr(err)
-
-		props, err := bucket.GetObjectDetailedMeta(ft.Object, options...)
-		checkErr(err)
-		nextPos, err = strconv.ParseInt(props.Get(oss.HTTPHeaderOssNextAppendPosition), 10, 64)
-		checkErr(err)
-		log.Printf("info size: %d nextPos: %d", info.Size(), nextPos)
-	*/
 
 	// 验证上传是否成功
 	fileURL := fmt.Sprintf(listFileURL, userID, appVer, cid)
