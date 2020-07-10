@@ -105,18 +105,17 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 
 	log.Println("普通模式上传文件：" + file)
 
-	token, err := getOSSToken()
+	ot, err := getOSSToken()
 	checkErr(err)
-	client, err := oss.New(token.endpoint, token.AccessKeyID, token.AccessKeySecret)
+	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret)
 	checkErr(err)
-
 	bucket, err := client.Bucket(ft.Bucket)
 	checkErr(err)
 
 	cb := base64.StdEncoding.EncodeToString([]byte(ft.Callback.Callback))
 	cbVar := base64.StdEncoding.EncodeToString([]byte(ft.Callback.CallbackVar))
 	options := []oss.Option{
-		oss.SetHeader("x-oss-security-token", token.SecurityToken),
+		oss.SetHeader("x-oss-security-token", ot.SecurityToken),
 		oss.Callback(cb),
 		oss.CallbackVar(cbVar),
 		oss.UserAgentHeader(aliUserAgent),
@@ -136,7 +135,7 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 	v, err := p.ParseBytes(body)
 	checkErr(err)
 	s := string(v.GetArray("data")[0].GetStringBytes("sha1"))
-	if s == ft.sha1 {
+	if s == ft.SHA1 {
 		log.Printf("普通模式上传 %s 成功", file)
 	} else {
 		log.Panicf("普通模式上传 %s 失败", file)

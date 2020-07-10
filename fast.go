@@ -18,13 +18,6 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-/*
-type cback struct {
-	CallbackURL  string `json:"callbackUrl"`
-	CallbackBody string `json:"callbackBody"`
-}
-*/
-
 type cbackVar struct {
 	PickCode     string `json:"x:pick_code"`
 	UserID       string `json:"x:user_id"`
@@ -49,7 +42,7 @@ type fastToken struct {
 	Bucket     string   `json:"bucket"`
 	Object     string   `json:"object"`
 	Callback   callback `json:"callback"`
-	sha1       string   // 文件的sha1 hash值
+	SHA1       string   // 文件的sha1 hash值
 }
 
 // 利用文件的sha1 hash值上传文件获取响应
@@ -92,19 +85,21 @@ func uploadSHA1(uplbURL, file string, pickCode string) (body []byte, fileSHA1 st
 	sig := strings.ToUpper(hex.EncodeToString(data[:]))
 	uploadURL := fmt.Sprintf(uplbURL, appVer, sig)
 
-	form := url.Values{}
-	if pickCode == "" {
-		form.Set("preid", preID)
-		form.Set("filename", filename)
-		form.Set("quickid", quickID)
-		form.Set("user_id", userID)
-		form.Set("app_ver", appVer)
-		form.Set("filesize", strconv.FormatInt(info.Size(), 10))
-		form.Set("userid", userID)
-		form.Set("exif", "")
-		form.Set("target", target)
-		form.Set("fileid", fileID)
+	if *verbose {
+		log.Printf("sig的值是：%s", sig)
 	}
+
+	form := url.Values{}
+	form.Set("preid", preID)
+	form.Set("filename", filename)
+	form.Set("quickid", quickID)
+	form.Set("user_id", userID)
+	form.Set("app_ver", appVer)
+	form.Set("filesize", strconv.FormatInt(info.Size(), 10))
+	form.Set("userid", userID)
+	form.Set("exif", "")
+	form.Set("target", target)
+	form.Set("fileid", fileID)
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, uploadURL, strings.NewReader(form.Encode()))
@@ -133,7 +128,7 @@ func fastUploadFile(file string) (token fastToken, e error) {
 
 	body, fileSHA1, err := uploadSHA1(initURL, file, "")
 	checkErr(err)
-	token.sha1 = fileSHA1
+	token.SHA1 = fileSHA1
 
 	if *verbose {
 		log.Printf("秒传模式上传文件 %s 的response body的内容是：\n%s", file, string(body))
@@ -145,7 +140,7 @@ func fastUploadFile(file string) (token fastToken, e error) {
 	if v.GetInt("status") == 2 && v.GetInt("statuscode") == 0 {
 		log.Printf("秒传模式上传 %s 成功", file)
 	} else if v.GetInt("status") == 1 && v.GetInt("statuscode") == 0 {
-		// 秒传失败的响应包含普通上传模式的token
+		// 秒传失败的响应包含普通上传模式和断点续传模式的token
 		err = json.Unmarshal(body, &token)
 		checkErr(err)
 
