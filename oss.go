@@ -121,8 +121,6 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 		oss.CallbackVar(cbVar),
 		oss.UserAgentHeader(aliUserAgent),
 		oss.Progress(&ossProgressListener{}),
-		//oss.Routines(2),
-		//oss.Checkpoint(true, ""),
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())

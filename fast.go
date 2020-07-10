@@ -52,36 +52,59 @@ type fastToken struct {
 	sha1       string   // 文件的sha1 hash值
 }
 
-// 利用文件的sha1 hash值上传文件
-func uploadSHA1(preID, fileID, file string, fileSize int64) (token fastToken, e error) {
+// 利用文件的sha1 hash值上传文件获取响应
+func uploadSHA1(uplbURL, file string, pickCode string) (body []byte, fileSHA1 string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("uploadSHA1() error: %v", err)
 		}
 	}()
 
+	f, err := os.Open(file)
+	checkErr(err)
+	defer f.Close()
+	info, err := f.Stat()
+	checkErr(err)
+
+	// 计算文件最前面一个区块的sha1 hash值
+	block := make([]byte, 128*1024)
+	_, err = f.Read(block)
+	checkErr(err)
+	data := sha1.Sum(block)
+	blockHash := hex.EncodeToString(data[:])
+	_, err = f.Seek(0, io.SeekStart)
+	checkErr(err)
+
+	// 计算整个文件的sha1 hash值
+	h := sha1.New()
+	_, err = io.Copy(h, f)
+	checkErr(err)
+	totalHash := hex.EncodeToString(h.Sum(nil))
+
+	preID := blockHash
 	filename := filepath.Base(file)
-	fileID = strings.ToUpper(fileID)
+	fileID := strings.ToUpper(totalHash)
 	quickID := fileID
-	token.sha1 = fileID
-	data := sha1.Sum([]byte(userID + fileID + quickID + target + "0"))
+	data = sha1.Sum([]byte(userID + fileID + quickID + pickCode + target + "0"))
 	hash := hex.EncodeToString(data[:])
 	sigStr := userKey + hash + endString
 	data = sha1.Sum([]byte(sigStr))
 	sig := strings.ToUpper(hex.EncodeToString(data[:]))
-	uploadURL := fmt.Sprintf(initURL, appVer, sig)
+	uploadURL := fmt.Sprintf(uplbURL, appVer, sig)
 
 	form := url.Values{}
-	form.Set("preid", preID)
-	form.Set("filename", filename)
-	form.Set("quickid", quickID)
-	form.Set("user_id", userID)
-	form.Set("app_ver", appVer)
-	form.Set("filesize", strconv.FormatInt(fileSize, 10))
-	form.Set("userid", userID)
-	form.Set("exif", "")
-	form.Set("target", target)
-	form.Set("fileid", fileID)
+	if pickCode == "" {
+		form.Set("preid", preID)
+		form.Set("filename", filename)
+		form.Set("quickid", quickID)
+		form.Set("user_id", userID)
+		form.Set("app_ver", appVer)
+		form.Set("filesize", strconv.FormatInt(info.Size(), 10))
+		form.Set("userid", userID)
+		form.Set("exif", "")
+		form.Set("target", target)
+		form.Set("fileid", fileID)
+	}
 
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, uploadURL, strings.NewReader(form.Encode()))
@@ -92,8 +115,25 @@ func uploadSHA1(preID, fileID, file string, fileSize int64) (token fastToken, e 
 	resp, err := client.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err = ioutil.ReadAll(resp.Body)
 	checkErr(err)
+
+	return body, fileID, nil
+}
+
+// 以秒传模式上传文件
+func fastUploadFile(file string) (token fastToken, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("fastUploadFile() error: %v", err)
+		}
+	}()
+
+	log.Println("秒传模式上传文件：" + file)
+
+	body, fileSHA1, err := uploadSHA1(initURL, file, "")
+	checkErr(err)
+	token.sha1 = fileSHA1
 
 	if *verbose {
 		log.Printf("秒传模式上传文件 %s 的response body的内容是：\n%s", file, string(body))
@@ -119,37 +159,4 @@ func uploadSHA1(preID, fileID, file string, fileSize int64) (token fastToken, e 
 	}
 
 	return token, nil
-}
-
-// 以秒传模式上传文件
-func fastUploadFile(file string) (token fastToken, e error) {
-	defer func() {
-		if err := recover(); err != nil {
-			e = fmt.Errorf("fastUploadFile() error: %v", err)
-		}
-	}()
-
-	log.Println("秒传模式上传文件：" + file)
-
-	f, err := os.Open(file)
-	checkErr(err)
-	defer f.Close()
-	info, err := f.Stat()
-	checkErr(err)
-
-	// 计算文件最前面一个区块的sha1 hash值
-	block := make([]byte, 128*1024)
-	_, err = f.Read(block)
-	checkErr(err)
-	data := sha1.Sum(block)
-	blockHash := hex.EncodeToString(data[:])
-	_, err = f.Seek(0, 0)
-	checkErr(err)
-
-	// 计算整个文件的sha1 hash值
-	h := sha1.New()
-	_, err = io.Copy(h, f)
-	checkErr(err)
-	totalHash := hex.EncodeToString(h.Sum(nil))
-	return uploadSHA1(blockHash, totalHash, file, info.Size())
 }

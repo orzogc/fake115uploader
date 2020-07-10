@@ -43,7 +43,7 @@ var (
 	userKey string
 	target  = "U_1_0"
 	config  uploadConfig // 设置数据
-	quit    = make(chan int)
+	quit    = make(chan int, 1)
 	// endpoint string
 	// bucketName = "fhnfile"
 )
@@ -118,7 +118,7 @@ func getUserKey() (e error) {
 	v, err := p.ParseBytes(body)
 	checkErr(err)
 	userID = strconv.Itoa(v.GetInt("user_id"))
-	userKey = strings.ToUpper(string(v.GetStringBytes("userkey")))
+	userKey = string(v.GetStringBytes("userkey"))
 
 	if userID == "0" {
 		log.Panicln("获取userkey出错，请确定cookies是否设置好")
