@@ -30,8 +30,7 @@ type ossToken struct {
 }
 
 // 进度监听
-type ossProgressListener struct {
-}
+type ossProgressListener struct{}
 
 // 实现oss.ProgressListener的接口
 func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {

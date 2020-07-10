@@ -66,9 +66,11 @@ func getInput() {
 		char, key, err := keyboard.GetKey()
 		checkErr(err)
 		if string(char) == "q" || string(char) == "Q" {
+			keyboard.Close()
 			os.Exit(0)
 		}
 		if key == keyboard.KeyCtrlC {
+			keyboard.Close()
 			os.Exit(0)
 		}
 	}
@@ -142,6 +144,15 @@ func loadConfig() {
 	if config.Cookies == "" {
 		log.Println("设置文件config.json里的cookies不能为空字符串")
 		os.Exit(1)
+	}
+
+	// 去掉last_video_volume
+	i := strings.Index(config.Cookies, "last_video_volume=")
+	j := strings.Index(config.Cookies, "UID=")
+	config.Cookies = config.Cookies[:i] + config.Cookies[j:]
+
+	if *verbose {
+		log.Printf("Cookies的值为：%s", config.Cookies)
 	}
 }
 
