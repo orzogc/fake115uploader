@@ -82,6 +82,12 @@ func getTime() string {
 
 // 处理输入
 func getInput(ctx context.Context) {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("getInput() error: %v", err)
+		}
+	}()
+
 	eventCh, err := keyboard.GetKeys(10)
 	checkErr(err)
 	defer keyboard.Close()
@@ -117,12 +123,22 @@ func handleQuit() {
 		<-multipartCh
 	}
 
+	keyboard.Close()
 	exitPrint()
 	os.Exit(0)
 }
 
 // 程序退出时打印信息
 func exitPrint() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("exitPrint() error: %v", err)
+			// 不保存上传结果
+			*resultDir = ""
+			exitPrint()
+		}
+	}()
+
 	if *resultDir != "" {
 		resultFile := filepath.Join(*resultDir, getTime()+" result.json")
 		log.Printf("上传结果保存在 %s", resultFile)
