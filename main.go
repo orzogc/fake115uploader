@@ -212,7 +212,7 @@ func initialize() {
 		os.Exit(0)
 	}
 	if (*fastUpload && *upload) || (*fastUpload && *multipartUpload) || (*upload && *multipartUpload) {
-		log.Println("-f、-u和-m这三个参数只能同时用一个")
+		log.Println("-f、-u和-m这三个参数只能同时用其中一个")
 		os.Exit(1)
 	}
 
@@ -247,6 +247,12 @@ func initialize() {
 }
 
 func main() {
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("main() error: %v", err)
+		}
+	}()
+
 	go handleQuit()
 
 	initialize()
@@ -329,8 +335,6 @@ func main() {
 				}
 				success = append(success, file)
 			}
-		default:
-			log.Panicln("未知的参数")
 		}
 	}
 }
