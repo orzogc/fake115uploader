@@ -89,10 +89,31 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	cb := base64.StdEncoding.EncodeToString([]byte(ft.Callback.Callback))
 	cbVar := base64.StdEncoding.EncodeToString([]byte(ft.Callback.CallbackVar))
 
-	var err error
+	f, err := os.Open(file)
+	checkErr(err)
+	defer f.Close()
+	info, err := f.Stat()
+	checkErr(err)
+
 	if sp == nil {
-		chunks, err = oss.SplitFileByPartNum(file, 1000)
-		checkErr(err)
+		// 上传的文件大小不能超过115GB
+		if info.Size() > 115*1024*1024*1024 {
+			return fmt.Errorf("%s 的大小超过115GB，取消上传", file)
+		}
+		for i := int64(1); i < 10; i++ {
+			if info.Size() < i*1024*1024*1024 {
+				// 文件大小小于iGB时分为i*1000片
+				chunks, err = oss.SplitFileByPartNum(file, int(i*1000))
+				checkErr(err)
+				break
+			}
+		}
+		if info.Size() > 9*1024*1024*1024 {
+			// 文件大小大于9GB时分为10000片
+			chunks, err = oss.SplitFileByPartNum(file, 10000)
+			checkErr(err)
+		}
+		// 单个分片大小不能小于100KB
 		if chunks[0].Size < 100*1024 {
 			chunks, err = oss.SplitFileByPartSize(file, 100*1024)
 			checkErr(err)
@@ -103,12 +124,6 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 		)
 		checkErr(err)
 	}
-
-	f, err := os.Open(file)
-	checkErr(err)
-	defer f.Close()
-	info, err := f.Stat()
-	checkErr(err)
 
 	bar = pb.Full.Start64(info.Size())
 	if sp != nil {
@@ -131,14 +146,8 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	}()
 	for _, chunk := range tempChunks {
 		select {
-		case <-ticker.C:
-			// 到时重新获取ossToken
-			ot, bucket = getBucket(ft.Bucket)
-		default:
-		}
-
-		select {
 		case <-multipartCh:
+			bar.Finish()
 			log.Printf("正在保存 %s 的上传进度，存档文件是 %s", file, saveFile)
 			sp = &saveProgress{FastToken: ft, Chunks: chunks, Imur: imur, Parts: parts}
 			data, err := json.Marshal(*sp)
@@ -146,13 +155,18 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			err = ioutil.WriteFile(saveFile, data, 0644)
 			checkErr(err)
 			saved = append(saved, file)
-			bar.Finish()
 			multipartCh <- 0
 			return errors.New("保存进度")
 		default:
 			var part oss.UploadPart
 			// 出现错误就继续尝试，共尝试3次
 			for retry := 0; retry < 3; retry++ {
+				select {
+				case <-ticker.C:
+					// 到时重新获取ossToken
+					ot, bucket = getBucket(ft.Bucket)
+				default:
+				}
 				f.Seek(chunk.Offset, io.SeekStart)
 				part, err = bucket.UploadPart(imur, f, chunk.Size, chunk.Number,
 					oss.SetHeader("x-oss-security-token", ot.SecurityToken),
@@ -169,7 +183,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 				}
 			}
 			if err != nil {
-				// 出现3次错误则保存上传进度
+				// 分片上传出现3次错误则保存上传进度
 				log.Printf("正在保存 %s 的上传进度，存档文件是 %s", file, saveFile)
 				sp = &saveProgress{FastToken: ft, Chunks: chunks, Imur: imur, Parts: parts}
 				data, err := json.Marshal(*sp)
