@@ -94,7 +94,7 @@ func handleQuit() {
 	case <-quit:
 	}
 
-	log.Println("收到退出信号，正在退出本程序")
+	log.Println("收到退出信号，正在退出本程序，请等待")
 
 	if uploadingPart {
 		multipartCh <- 0
@@ -194,7 +194,7 @@ func initialize() {
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断下载再重启下载（实验性质，请谨慎使用，注意断点时间不要过长）")
-	cookies := flag.String("k", "", "设置115网页版的`Cookie`")
+	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
 	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")

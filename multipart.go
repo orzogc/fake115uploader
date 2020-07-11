@@ -145,17 +145,21 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 					break
 				} else {
 					log.Printf("上传 %s 的第%d个分片时出现错误：%v", file, chunk.Number, err)
-					log.Printf("尝试重新上传第%d个分片", chunk.Number)
+					if retry != 2 {
+						log.Printf("尝试重新上传第%d个分片", chunk.Number)
+					}
 				}
 			}
 			if err != nil {
 				// 出现3次错误则保存上传进度
-				log.Printf("上传 %s 的第%d个分片时出现错误：%v", file, chunk.Number, err)
-				go func() {
-					multipartCh <- 0
-					<-multipartCh
-				}()
-				continue
+				log.Printf("正在保存 %s 的上传进度，存档文件是 %s", file, saveFile)
+				sp = &saveProgress{FastToken: ft, Chunks: chunks, Imur: imur, Parts: parts}
+				data, err := json.Marshal(*sp)
+				checkErr(err)
+				err = ioutil.WriteFile(saveFile, data, 0644)
+				checkErr(err)
+				saved = append(saved, file)
+				return errors.New("保存进度")
 			}
 			parts = append(parts, part)
 		}
