@@ -35,10 +35,11 @@ const (
 )
 
 var (
-	cmdPath         string // 程序所在文件夹位置
+	//cmdPath         string // 程序所在文件夹位置
 	fastUpload      *bool
 	upload          *bool
 	multipartUpload *bool
+	configDir       *string
 	verbose         *bool // 是否显示更详细的信息
 	userID          string
 	userKey         string
@@ -163,7 +164,7 @@ func loadConfig() {
 	// 设置文件的文件名
 	configFile := "config.json"
 	// 设置文件应当在本程序所在文件夹内
-	configFile = filepath.Join(cmdPath, configFile)
+	configFile = filepath.Join(*configDir, configFile)
 
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
 		log.Println("设置文件不存在，新建设置文件config.json，请先设置cookies")
@@ -195,6 +196,7 @@ func initialize() {
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断下载再重启下载（实验性质，请谨慎使用，注意断点时间不要过长）")
+	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的文件夹")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
 	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
@@ -216,9 +218,11 @@ func initialize() {
 		os.Exit(1)
 	}
 
-	path, err := os.Executable()
-	checkErr(err)
-	cmdPath = filepath.Dir(path)
+	if *configDir == "" {
+		path, err := os.Executable()
+		checkErr(err)
+		*configDir = filepath.Dir(path)
+	}
 
 	if !*noConfig {
 		loadConfig()
@@ -229,7 +233,7 @@ func initialize() {
 		config.Cookies = *cookies
 	}
 	if config.Cookies == "" {
-		log.Println("设置文件config.json里的cookies不能为空字符串")
+		log.Println("设置文件config.json里的cookies不能为空字符串，或者用-k指定115的Cookie")
 		os.Exit(1)
 	}
 	if *verbose {
@@ -242,7 +246,7 @@ func initialize() {
 	}
 	target = "U_1_" + strconv.FormatUint(config.CID, 10)
 
-	err = getUserKey()
+	err := getUserKey()
 	checkErr(err)
 }
 
@@ -299,7 +303,7 @@ func main() {
 			success = append(success, file)
 		case *multipartUpload:
 			// 存档文件保存在本程序所在文件夹内
-			saveFile := filepath.Join(cmdPath, filepath.Base(file)) + ".json"
+			saveFile := filepath.Join(*configDir, filepath.Base(file)) + ".json"
 			info, err := os.Stat(saveFile)
 			if os.IsNotExist(err) {
 				token, err := fastUploadFile(file)
@@ -337,4 +341,6 @@ func main() {
 			}
 		}
 	}
+	// 等待一秒
+	time.Sleep(time.Second)
 }
