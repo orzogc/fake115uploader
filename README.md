@@ -11,7 +11,7 @@
 `go get -u github.com/orzogc/fake115uploader`
 
 ### 使用方法
-首先要先运行一次 `fake115uploader` 生成设置文件config.json，然后登陆网页版115，按F12后刷新，将115网页请求的Cookie的值全部复制到config.json的cookies的值里，或者运行时用参数 `-k` 指定要用的Cookie
+首先要先运行一次 `fake115uploader` 生成设置文件config.json（使用 `-d` 指定存放设置文件的文件夹，默认为程序所在的文件夹），然后登陆网页版115，按F12后刷新，将115网页请求的Cookie的值全部复制到config.json的cookies的值里，或者运行时用参数 `-k` 指定要用的Cookie
 
 `fake115uploader -f 文件` 秒传模式上传文件，可以指定多个文件，下同
 
