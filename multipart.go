@@ -42,21 +42,27 @@ func (listener *multipartProgressListener) ProgressChanged(event *oss.ProgressEv
 	}
 }
 
-func getBucket(bucketName string) (ot ossToken, bucket *oss.Bucket) {
+func getBucket(bucketName string) (ot ossToken, bucket *oss.Bucket, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("getBucket() error: %w", err)
+		}
+	}()
+
 	ot, err := getOSSToken()
 	checkErr(err)
 	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret)
 	checkErr(err)
 	bucket, err = client.Bucket(bucketName)
 	checkErr(err)
-	return ot, bucket
+	return ot, bucket, nil
 }
 
 // 利用oss的接口以multipart的方式上传文件，sp不为nil时恢复上次的上传
 func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("multipartUploadFile() error: %v", err)
+			e = fmt.Errorf("multipartUploadFile() error: %w", err)
 		}
 	}()
 
@@ -81,7 +87,8 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 		parts = sp.Parts
 	}
 
-	ot, bucket := getBucket(ft.Bucket)
+	ot, bucket, err := getBucket(ft.Bucket)
+	checkErr(err)
 	// ossToken一小时后就会失效
 	ticker := time.NewTicker(50 * time.Minute)
 	defer ticker.Stop()
@@ -156,7 +163,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			checkErr(err)
 			result.Saved = append(result.Saved, file)
 			multipartCh <- 0
-			return errors.New("保存进度")
+			return errStopUpload
 		default:
 			var part oss.UploadPart
 			// 出现错误就继续尝试，共尝试3次
@@ -164,7 +171,8 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 				select {
 				case <-ticker.C:
 					// 到时重新获取ossToken
-					ot, bucket = getBucket(ft.Bucket)
+					ot, bucket, err = getBucket(ft.Bucket)
+					checkErr(err)
 				default:
 				}
 				f.Seek(chunk.Offset, io.SeekStart)
@@ -192,7 +200,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 				err = ioutil.WriteFile(saveFile, data, 0644)
 				checkErr(err)
 				result.Saved = append(result.Saved, file)
-				return errors.New("保存进度")
+				return errStopUpload
 			}
 			parts = append(parts, part)
 		}
@@ -203,7 +211,8 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	select {
 	case <-ticker.C:
 		// 到时重新获取ossToken
-		ot, bucket = getBucket(ft.Bucket)
+		ot, bucket, err = getBucket(ft.Bucket)
+		checkErr(err)
 	default:
 	}
 	var header http.Header
@@ -214,8 +223,8 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 		oss.UserAgentHeader(aliUserAgent),
 		oss.GetResponseHeader(&header),
 	)
-	// EOF错误好像是xml的Unmarshal导致的，实际上上传是成功的
-	if err != nil && fmt.Sprint(err) != "EOF" {
+	// EOF错误是xml的Unmarshal导致的，响应其实是json格式，所以实际上上传是成功的
+	if err != nil && !errors.Is(err, io.EOF) {
 		log.Panicln(err)
 	}
 	if *verbose {
@@ -225,7 +234,8 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 
 	// 验证上传是否成功
 	fileURL := fmt.Sprintf(listFileURL, userID, appVer, config.CID)
-	body := getURL(fileURL)
+	body, err := getURL(fileURL)
+	checkErr(err)
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)
 	checkErr(err)

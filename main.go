@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -47,6 +48,7 @@ var (
 	config          uploadConfig // 设置数据
 	result          resultData   // 上传结果
 	uploadingPart   bool
+	errStopUpload   = errors.New("停止下载")
 	quit            = make(chan int)
 	multipartCh     = make(chan int)
 )
@@ -149,7 +151,7 @@ func getUserKey() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("请确定网络是否畅通或者cookies是否设置好，每一次登陆网页端115都要重设一次cookies")
-			e = fmt.Errorf("getUserKey() error: %v", err)
+			e = fmt.Errorf("getUserKey() error: %w", err)
 		}
 	}()
 
@@ -181,7 +183,13 @@ func getUserKey() (e error) {
 }
 
 // 读取设置文件
-func loadConfig() {
+func loadConfig() (e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("loadConfig() error: %w", err)
+		}
+	}()
+
 	// 设置文件的文件名
 	configFile := "config.json"
 	// 设置文件应当在本程序所在文件夹内
@@ -210,10 +218,18 @@ func loadConfig() {
 	//i := strings.Index(config.Cookies, "last_video_volume=")
 	//j := strings.Index(config.Cookies, "UID=")
 	//config.Cookies = config.Cookies[:i] + config.Cookies[j:]
+
+	return nil
 }
 
 // 程序初始化
-func initialize() {
+func initialize() (e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("initialize() error: %w", err)
+		}
+	}()
+
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断下载再重启下载（实验性质，请谨慎使用，注意断点时间不要过长）")
@@ -247,7 +263,8 @@ func initialize() {
 	}
 
 	if !*noConfig {
-		loadConfig()
+		err := loadConfig()
+		checkErr(err)
 	}
 
 	// 优先使用参数指定的Cookie
@@ -270,6 +287,8 @@ func initialize() {
 
 	err := getUserKey()
 	checkErr(err)
+
+	return nil
 }
 
 func main() {
@@ -281,7 +300,8 @@ func main() {
 
 	go handleQuit()
 
-	initialize()
+	err := initialize()
+	checkErr(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -334,7 +354,7 @@ func main() {
 					log.Println("现在开始使用断点续传模式上传")
 					err := multipartUploadFile(token, file, nil)
 					if err != nil {
-						if fmt.Sprint(err) == "保存进度" {
+						if errors.Is(err, errStopUpload) {
 							continue
 						}
 						log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
@@ -352,7 +372,7 @@ func main() {
 				log.Printf("发现文件 %s 的上传曾经中断过，现在开始断点续传", file)
 				err := resumeUpload(file)
 				if err != nil {
-					if fmt.Sprint(err) == "保存进度" {
+					if errors.Is(err, errStopUpload) {
 						continue
 					}
 					log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)

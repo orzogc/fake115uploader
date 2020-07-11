@@ -50,7 +50,13 @@ func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 }
 
 // 以GET请求获取网页内容
-func getURL(url string) (body []byte) {
+func getURL(url string) (body []byte, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("getURL() error: %w", err)
+		}
+	}()
+
 	client := http.Client{}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	checkErr(err)
@@ -62,20 +68,21 @@ func getURL(url string) (body []byte) {
 	body, err = ioutil.ReadAll(resp.Body)
 	checkErr(err)
 
-	return body
+	return body, nil
 }
 
 // 获取oss的token
 func getOSSToken() (token ossToken, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("getOSSToken() error: %v", err)
+			e = fmt.Errorf("getOSSToken() error: %w", err)
 		}
 	}()
 
-	body := getURL(getinfoURL)
+	body, err := getURL(getinfoURL)
+	checkErr(err)
 	var info uploadInfo
-	err := json.Unmarshal(body, &info)
+	err = json.Unmarshal(body, &info)
 	checkErr(err)
 	token.endpoint = info.Endpoint
 
@@ -83,7 +90,8 @@ func getOSSToken() (token ossToken, e error) {
 		log.Printf("info的值：\n%+v", info)
 	}
 
-	body = getURL(info.GetTokenURL)
+	body, err = getURL(info.GetTokenURL)
+	checkErr(err)
 	err = json.Unmarshal(body, &token)
 	checkErr(err)
 
@@ -98,7 +106,7 @@ func getOSSToken() (token ossToken, e error) {
 func ossUploadFile(ft fastToken, file string) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("ossUploadFile() error: %v", err)
+			e = fmt.Errorf("ossUploadFile() error: %w", err)
 		}
 	}()
 
@@ -127,7 +135,8 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 
 	// 验证上传是否成功
 	fileURL := fmt.Sprintf(listFileURL, userID, appVer, config.CID)
-	body := getURL(fileURL)
+	body, err := getURL(fileURL)
+	checkErr(err)
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)
 	checkErr(err)
