@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -122,14 +121,12 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 		oss.Progress(&ossProgressListener{}),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go getInput(ctx)
+	fmt.Println("按q键停止下载并退出程序")
 	err = bucket.PutObjectFromFile(ft.Object, file, options...)
 	checkErr(err)
 
 	// 验证上传是否成功
-	fileURL := fmt.Sprintf(listFileURL, userID, appVer, cid)
+	fileURL := fmt.Sprintf(listFileURL, userID, appVer, config.CID)
 	body := getURL(fileURL)
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)

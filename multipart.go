@@ -1,9 +1,9 @@
 package main
 
 import (
-	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -51,6 +51,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 
 	log.Println("断点续传模式上传文件：" + file)
 
+	// 存档文件保存在本程序所在文件夹内
 	saveFile := filepath.Join(cmdPath, filepath.Base(file)) + ".json"
 	if sp != nil {
 		data, err := ioutil.ReadFile(saveFile)
@@ -107,16 +108,17 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	bar.Set(pb.SIBytesPrefix, true)
 	defer bar.Finish()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go getInput(ctx)
-
+	fmt.Println("按q键停止下载并退出程序")
 	var tempChunks []oss.FileChunk
 	if sp != nil {
 		tempChunks = chunks[len(sp.Parts):]
 	} else {
 		tempChunks = chunks
 	}
+	uploadingPart = true
+	defer func() {
+		uploadingPart = false
+	}()
 	for _, chunk := range tempChunks {
 		select {
 		case <-multipartCh:
@@ -126,19 +128,39 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			checkErr(err)
 			err = ioutil.WriteFile(saveFile, data, 0644)
 			checkErr(err)
+			saved = append(saved, file)
 			multipartCh <- 0
-			return
+			return errors.New("保存进度")
 		default:
-			f.Seek(chunk.Offset, io.SeekStart)
-			part, err := bucket.UploadPart(imur, f, chunk.Size, chunk.Number,
-				oss.SetHeader("x-oss-security-token", ot.SecurityToken),
-				oss.UserAgentHeader(aliUserAgent),
-				oss.Progress(&multipartProgressListener{}),
-			)
-			checkErr(err)
+			var part oss.UploadPart
+			// 出现错误就继续尝试，共尝试3次
+			for retry := 0; retry < 3; retry++ {
+				f.Seek(chunk.Offset, io.SeekStart)
+				part, err = bucket.UploadPart(imur, f, chunk.Size, chunk.Number,
+					oss.SetHeader("x-oss-security-token", ot.SecurityToken),
+					oss.UserAgentHeader(aliUserAgent),
+					oss.Progress(&multipartProgressListener{}),
+				)
+				if err == nil {
+					break
+				} else {
+					log.Printf("上传 %s 的第%d个分片时出现错误：%v", file, chunk.Number, err)
+					log.Printf("尝试重新上传第%d个分片", chunk.Number)
+				}
+			}
+			if err != nil {
+				// 出现3次错误则保存上传进度
+				log.Printf("上传 %s 的第%d个分片时出现错误：%v", file, chunk.Number, err)
+				go func() {
+					multipartCh <- 0
+					<-multipartCh
+				}()
+				continue
+			}
 			parts = append(parts, part)
 		}
 	}
+	uploadingPart = false
 	bar.Finish()
 
 	var header http.Header
@@ -159,7 +181,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	}
 
 	// 验证上传是否成功
-	fileURL := fmt.Sprintf(listFileURL, userID, appVer, cid)
+	fileURL := fmt.Sprintf(listFileURL, userID, appVer, config.CID)
 	body := getURL(fileURL)
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)

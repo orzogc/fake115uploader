@@ -12,7 +12,6 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/eiannone/keyboard"
@@ -35,17 +34,21 @@ const (
 )
 
 var (
-	cmdPath     string // 程序所在文件夹位置
-	verbose     *bool  // 是否显示更详细的信息
-	cid         uint64 // 115文件夹的cid
-	userID      string
-	userKey     string
-	target      = "U_1_0"
-	config      uploadConfig // 设置数据
-	success     []string     // 上传成功的文件
-	failed      []string     // 上传失败的文件
-	quit        = make(chan int)
-	multipartCh = make(chan int)
+	cmdPath         string // 程序所在文件夹位置
+	fastUpload      *bool
+	upload          *bool
+	multipartUpload *bool
+	verbose         *bool // 是否显示更详细的信息
+	userID          string
+	userKey         string
+	target          = "U_1_0"
+	config          uploadConfig // 设置数据
+	success         []string     // 上传成功的文件
+	failed          []string     // 上传失败的文件
+	saved           []string     // 保存上传进度的文件
+	uploadingPart   bool
+	quit            = make(chan int)
+	multipartCh     = make(chan int)
 )
 
 // 设置数据
@@ -66,7 +69,6 @@ func getInput(ctx context.Context) {
 	eventCh, err := keyboard.GetKeys(10)
 	checkErr(err)
 	defer keyboard.Close()
-	log.Println("按q键退出程序")
 
 	for {
 		select {
@@ -94,8 +96,10 @@ func handleQuit() {
 
 	log.Println("收到退出信号，正在退出本程序")
 
-	multipartCh <- 0
-	<-multipartCh
+	if uploadingPart {
+		multipartCh <- 0
+		<-multipartCh
+	}
 
 	exitPrint()
 	os.Exit(0)
@@ -109,6 +113,10 @@ func exitPrint() {
 	}
 	fmt.Println("上传失败的文件：")
 	for _, s := range failed {
+		fmt.Println(s)
+	}
+	fmt.Println("保存上传进度的文件：")
+	for _, s := range saved {
 		fmt.Println(s)
 	}
 }
@@ -153,9 +161,6 @@ func getUserKey() (e error) {
 func loadConfig() {
 	// 设置文件的文件名
 	configFile := "config.json"
-	path, err := os.Executable()
-	checkErr(err)
-	cmdPath = filepath.Dir(path)
 	// 设置文件应当在本程序所在文件夹内
 	configFile = filepath.Join(cmdPath, configFile)
 
@@ -178,28 +183,20 @@ func loadConfig() {
 		}
 	}
 
-	if config.Cookies == "" {
-		log.Println("设置文件config.json里的cookies不能为空字符串")
-		os.Exit(1)
-	}
-
 	// 去掉last_video_volume
-	i := strings.Index(config.Cookies, "last_video_volume=")
-	j := strings.Index(config.Cookies, "UID=")
-	config.Cookies = config.Cookies[:i] + config.Cookies[j:]
-
-	if *verbose {
-		log.Printf("Cookies的值为：%s", config.Cookies)
-	}
+	//i := strings.Index(config.Cookies, "last_video_volume=")
+	//j := strings.Index(config.Cookies, "UID=")
+	//config.Cookies = config.Cookies[:i] + config.Cookies[j:]
 }
 
-func main() {
-	go handleQuit()
-
-	fastUpload := flag.Bool("f", false, "秒传模式上传`文件`")
-	upload := flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
-	multipartUpload := flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断下载再重启下载（实验性质，请谨慎使用，注意断点时间不要过长）")
-	cidNum := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
+// 程序初始化
+func initialize() {
+	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
+	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
+	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断下载再重启下载（实验性质，请谨慎使用，注意断点时间不要过长）")
+	cookies := flag.String("k", "", "设置115网页版的`Cookie`")
+	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
+	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
@@ -213,19 +210,50 @@ func main() {
 		flag.PrintDefaults()
 		os.Exit(0)
 	}
+	if (*fastUpload && *upload) || (*fastUpload && *multipartUpload) || (*upload && *multipartUpload) {
+		log.Println("-f、-u和-m这三个参数只能同时用一个")
+		os.Exit(1)
+	}
 
-	loadConfig()
+	path, err := os.Executable()
+	checkErr(err)
+	cmdPath = filepath.Dir(path)
+
+	if !*noConfig {
+		loadConfig()
+	}
+
+	// 优先使用参数指定的Cookie
+	if *cookies != "" {
+		config.Cookies = *cookies
+	}
+	if config.Cookies == "" {
+		log.Println("设置文件config.json里的cookies不能为空字符串")
+		os.Exit(1)
+	}
+	if *verbose {
+		log.Printf("Cookies的值为：%s", config.Cookies)
+	}
 
 	// 优先使用参数指定的cid
-	if *cidNum != 0 {
-		cid = *cidNum
-	} else if config.CID != 0 {
-		cid = config.CID
+	if *cid != 0 {
+		config.CID = *cid
 	}
-	target = "U_1_" + strconv.FormatUint(cid, 10)
+	target = "U_1_" + strconv.FormatUint(config.CID, 10)
 
-	err := getUserKey()
+	err = getUserKey()
 	checkErr(err)
+}
+
+func main() {
+	go handleQuit()
+
+	initialize()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go getInput(ctx)
+	defer keyboard.Close()
 
 	defer exitPrint()
 
@@ -239,7 +267,7 @@ func main() {
 
 		switch {
 		case *fastUpload:
-			_, err = fastUploadFile(file)
+			_, err := fastUploadFile(file)
 			if err != nil {
 				log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
 				failed = append(failed, file)
@@ -251,7 +279,7 @@ func main() {
 			if err != nil {
 				log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
 				log.Printf("现在开始使用普通模式上传 %s", file)
-				err = ossUploadFile(token, file)
+				err := ossUploadFile(token, file)
 				if err != nil {
 					log.Printf("普通模式上传 %s 出现错误：%v", file, err)
 					failed = append(failed, file)
@@ -260,16 +288,19 @@ func main() {
 			}
 			success = append(success, file)
 		case *multipartUpload:
+			// 存档文件保存在本程序所在文件夹内
 			saveFile := filepath.Join(cmdPath, filepath.Base(file)) + ".json"
-			log.Println(saveFile)
 			info, err := os.Stat(saveFile)
 			if os.IsNotExist(err) {
 				token, err := fastUploadFile(file)
 				if err != nil {
 					log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
 					log.Println("现在开始使用断点续传模式上传")
-					err = multipartUploadFile(token, file, nil)
+					err := multipartUploadFile(token, file, nil)
 					if err != nil {
+						if fmt.Sprint(err) == "保存进度" {
+							continue
+						}
 						log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
 						failed = append(failed, file)
 						continue
@@ -281,16 +312,18 @@ func main() {
 					log.Printf("%s 不能是文件夹", saveFile)
 					failed = append(failed, file)
 					continue
-				} else {
-					log.Printf("发现文件 %s 的上传曾经中断过，现在开始断点续传", file)
-					err = resumeUpload(file)
-					if err != nil {
-						log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
-						failed = append(failed, file)
+				}
+				log.Printf("发现文件 %s 的上传曾经中断过，现在开始断点续传", file)
+				err := resumeUpload(file)
+				if err != nil {
+					if fmt.Sprint(err) == "保存进度" {
 						continue
 					}
-					success = append(success, file)
+					log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
+					failed = append(failed, file)
+					continue
 				}
+				success = append(success, file)
 			}
 		default:
 			log.Panicln("未知的参数")
