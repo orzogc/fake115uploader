@@ -154,7 +154,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			checkErr(err)
 			err = ioutil.WriteFile(saveFile, data, 0644)
 			checkErr(err)
-			saved = append(saved, file)
+			result.Saved = append(result.Saved, file)
 			multipartCh <- 0
 			return errors.New("保存进度")
 		default:
@@ -191,7 +191,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 				checkErr(err)
 				err = ioutil.WriteFile(saveFile, data, 0644)
 				checkErr(err)
-				saved = append(saved, file)
+				result.Saved = append(result.Saved, file)
 				return errors.New("保存进度")
 			}
 			parts = append(parts, part)

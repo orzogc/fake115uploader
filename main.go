@@ -35,19 +35,17 @@ const (
 )
 
 var (
-	//cmdPath         string // 程序所在文件夹位置
 	fastUpload      *bool
 	upload          *bool
 	multipartUpload *bool
 	configDir       *string
-	verbose         *bool // 是否显示更详细的信息
+	resultDir       *string
+	verbose         *bool
 	userID          string
 	userKey         string
 	target          = "U_1_0"
 	config          uploadConfig // 设置数据
-	success         []string     // 上传成功的文件
-	failed          []string     // 上传失败的文件
-	saved           []string     // 保存上传进度的文件
+	result          resultData   // 上传结果
 	uploadingPart   bool
 	quit            = make(chan int)
 	multipartCh     = make(chan int)
@@ -59,11 +57,25 @@ type uploadConfig struct {
 	CID     uint64 `json:"cid"`
 }
 
+// 上传结果数据
+type resultData struct {
+	Success []string `json:"success"` // 上传成功的文件
+	Failed  []string `json:"failed"`  // 上传失败的文件
+	Saved   []string `json:"saved"`   // 保存上传进度的文件
+}
+
 // 检查错误
 func checkErr(err error) {
 	if err != nil {
 		log.Panicln(err)
 	}
+}
+
+// 获取时间
+func getTime() string {
+	t := time.Now()
+	timeStr := fmt.Sprintf("%d-%02d-%02d %02d-%02d-%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
+	return timeStr
 }
 
 // 处理输入
@@ -109,16 +121,25 @@ func handleQuit() {
 
 // 程序退出时打印信息
 func exitPrint() {
+	if *resultDir != "" {
+		resultFile := filepath.Join(*resultDir, getTime()+" result.json")
+		log.Printf("上传结果保存在 %s", resultFile)
+		data, err := json.MarshalIndent(result, "", "    ")
+		checkErr(err)
+		err = ioutil.WriteFile(resultFile, data, 0644)
+		checkErr(err)
+	}
+
 	fmt.Println("上传成功的文件：")
-	for _, s := range success {
+	for _, s := range result.Success {
 		fmt.Println(s)
 	}
 	fmt.Println("上传失败的文件：")
-	for _, s := range failed {
+	for _, s := range result.Failed {
 		fmt.Println(s)
 	}
 	fmt.Println("保存上传进度的文件：")
-	for _, s := range saved {
+	for _, s := range result.Saved {
 		fmt.Println(s)
 	}
 }
@@ -196,10 +217,11 @@ func initialize() {
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断下载再重启下载（实验性质，请谨慎使用，注意断点时间不要过长）")
-	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的文件夹")
+	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
 	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
+	resultDir = flag.String("r", "", "将上传结果保存在指定`文件夹`")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
@@ -284,10 +306,10 @@ func main() {
 			_, err := fastUploadFile(file)
 			if err != nil {
 				log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
-				failed = append(failed, file)
+				result.Failed = append(result.Failed, file)
 				continue
 			}
-			success = append(success, file)
+			result.Success = append(result.Success, file)
 		case *upload:
 			token, err := fastUploadFile(file)
 			if err != nil {
@@ -296,11 +318,11 @@ func main() {
 				err := ossUploadFile(token, file)
 				if err != nil {
 					log.Printf("普通模式上传 %s 出现错误：%v", file, err)
-					failed = append(failed, file)
+					result.Failed = append(result.Failed, file)
 					continue
 				}
 			}
-			success = append(success, file)
+			result.Success = append(result.Success, file)
 		case *multipartUpload:
 			// 存档文件保存在本程序所在文件夹内
 			saveFile := filepath.Join(*configDir, filepath.Base(file)) + ".json"
@@ -316,15 +338,15 @@ func main() {
 							continue
 						}
 						log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
-						failed = append(failed, file)
+						result.Failed = append(result.Failed, file)
 						continue
 					}
 				}
-				success = append(success, file)
+				result.Success = append(result.Success, file)
 			} else {
 				if info.IsDir() {
 					log.Printf("%s 不能是文件夹", saveFile)
-					failed = append(failed, file)
+					result.Failed = append(result.Failed, file)
 					continue
 				}
 				log.Printf("发现文件 %s 的上传曾经中断过，现在开始断点续传", file)
@@ -334,10 +356,10 @@ func main() {
 						continue
 					}
 					log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
-					failed = append(failed, file)
+					result.Failed = append(result.Failed, file)
 					continue
 				}
-				success = append(success, file)
+				result.Success = append(result.Success, file)
 			}
 		}
 	}
