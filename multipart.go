@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/cheggaaa/pb/v3"
@@ -39,6 +40,16 @@ func (listener *multipartProgressListener) ProgressChanged(event *oss.ProgressEv
 	case oss.TransferFailedEvent:
 	default:
 	}
+}
+
+func getBucket(bucketName string) (ot ossToken, bucket *oss.Bucket) {
+	ot, err := getOSSToken()
+	checkErr(err)
+	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret)
+	checkErr(err)
+	bucket, err = client.Bucket(bucketName)
+	checkErr(err)
+	return ot, bucket
 }
 
 // 利用oss的接口以multipart的方式上传文件，sp不为nil时恢复上次的上传
@@ -70,16 +81,15 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 		parts = sp.Parts
 	}
 
-	ot, err := getOSSToken()
-	checkErr(err)
-	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret)
-	checkErr(err)
-	bucket, err := client.Bucket(ft.Bucket)
-	checkErr(err)
+	ot, bucket := getBucket(ft.Bucket)
+	// ossToken一小时后就会失效
+	ticker := time.NewTicker(50 * time.Minute)
+	defer ticker.Stop()
 
 	cb := base64.StdEncoding.EncodeToString([]byte(ft.Callback.Callback))
 	cbVar := base64.StdEncoding.EncodeToString([]byte(ft.Callback.CallbackVar))
 
+	var err error
 	if sp == nil {
 		chunks, err = oss.SplitFileByPartNum(file, 1000)
 		checkErr(err)
@@ -121,6 +131,13 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	}()
 	for _, chunk := range tempChunks {
 		select {
+		case <-ticker.C:
+			// 到时重新获取ossToken
+			ot, bucket = getBucket(ft.Bucket)
+		default:
+		}
+
+		select {
 		case <-multipartCh:
 			log.Printf("正在保存 %s 的上传进度，存档文件是 %s", file, saveFile)
 			sp = &saveProgress{FastToken: ft, Chunks: chunks, Imur: imur, Parts: parts}
@@ -129,6 +146,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			err = ioutil.WriteFile(saveFile, data, 0644)
 			checkErr(err)
 			saved = append(saved, file)
+			bar.Finish()
 			multipartCh <- 0
 			return errors.New("保存进度")
 		default:
@@ -167,6 +185,12 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	uploadingPart = false
 	bar.Finish()
 
+	select {
+	case <-ticker.C:
+		// 到时重新获取ossToken
+		ot, bucket = getBucket(ft.Bucket)
+	default:
+	}
 	var header http.Header
 	cmur, err := bucket.CompleteMultipartUpload(imur, parts,
 		oss.SetHeader("x-oss-security-token", ot.SecurityToken),

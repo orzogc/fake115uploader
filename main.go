@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/eiannone/keyboard"
 	"github.com/valyala/fastjson"
@@ -258,6 +259,9 @@ func main() {
 	defer exitPrint()
 
 	for _, file := range flag.Args() {
+		// 等待一秒
+		time.Sleep(time.Second)
+
 		info, err := os.Stat(file)
 		checkErr(err)
 		if info.IsDir() {
