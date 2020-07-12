@@ -48,7 +48,7 @@ var (
 	config          uploadConfig // 设置数据
 	result          resultData   // 上传结果
 	uploadingPart   bool
-	errStopUpload   = errors.New("停止上传")
+	errStopUpload   = errors.New("暂停上传")
 	quit            = make(chan int)
 	multipartCh     = make(chan int)
 )

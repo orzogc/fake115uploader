@@ -131,7 +131,7 @@ func fastUploadFile(file string) (token fastToken, e error) {
 	token.SHA1 = fileSHA1
 
 	if *verbose {
-		log.Printf("秒传模式上传文件 %s 的response body的内容是：\n%s", file, string(body))
+		log.Printf("秒传模式上传文件 %s 的响应体的内容是：\n%s", file, string(body))
 	}
 
 	var p fastjson.Parser

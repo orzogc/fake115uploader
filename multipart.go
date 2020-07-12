@@ -89,7 +89,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 
 	ot, bucket, err := getBucket(ft.Bucket)
 	checkErr(err)
-	// ossToken一小时后就会失效
+	// ossToken一小时后就会失效，所以每50分钟重新获取一次
 	ticker := time.NewTicker(50 * time.Minute)
 	defer ticker.Stop()
 
