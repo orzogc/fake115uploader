@@ -214,7 +214,7 @@ func loadConfig() (e error) {
 
 	// 设置文件的文件名
 	configFile := "config.json"
-	// 设置文件应当在本程序所在文件夹内
+	// 设置文件所在位置，默认是本程序所在的文件夹
 	configFile = filepath.Join(*configDir, configFile)
 
 	if _, err := os.Stat(configFile); os.IsNotExist(err) {
@@ -391,7 +391,7 @@ func main() {
 			}
 			result.Success = append(result.Success, file)
 		case *multipartUpload:
-			// 存档文件保存在本程序所在文件夹内
+			// 存档文件保存在设置文件所在文件夹内
 			saveFile := filepath.Join(*configDir, filepath.Base(file)) + ".json"
 			info, err := os.Stat(saveFile)
 			if os.IsNotExist(err) {
