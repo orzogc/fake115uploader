@@ -39,6 +39,7 @@ var (
 	fastUpload      *bool
 	upload          *bool
 	multipartUpload *bool
+	hashFile        *string
 	configDir       *string
 	verbose         *bool
 	userID          string
@@ -138,6 +139,11 @@ func exitPrint() {
 			exitPrint()
 		}
 	}()
+
+	if len(result.Success) == 0 && len(result.Failed) == 0 && len(result.Saved) == 0 {
+		log.Println("本次运行没有上传文件")
+		return
+	}
 
 	if config.ResultDir != "" {
 		resultFile := filepath.Join(config.ResultDir, getTime()+" result.json")
@@ -249,6 +255,7 @@ func initialize() (e error) {
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要太长）")
+	hashFile = flag.String("b", "", "将指定文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）追加写入到指定的`保存文件`")
 	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
@@ -282,6 +289,16 @@ func initialize() (e error) {
 	if (*fastUpload && *upload) || (*fastUpload && *multipartUpload) || (*upload && *multipartUpload) {
 		log.Println("-f、-u和-m这三个参数只能同时用其中一个")
 		os.Exit(1)
+	}
+
+	if *hashFile != "" {
+		info, err := os.Stat(*hashFile)
+		if !os.IsNotExist(err) {
+			if info.IsDir() {
+				log.Printf("%s 不能是文件夹", *hashFile)
+				os.Exit(1)
+			}
+		}
 	}
 
 	// 优先使用参数指定的Cookie
@@ -411,8 +428,15 @@ func main() {
 				}
 				result.Success = append(result.Success, file)
 			}
+		case *hashFile != "":
 		}
 	}
 	// 等待一秒
 	time.Sleep(time.Second)
+
+	if *hashFile != "" {
+		err := write115Link()
+		checkErr(err)
+		log.Printf("成功将文件的115 hashlink保存在 %s", *hashFile)
+	}
 }

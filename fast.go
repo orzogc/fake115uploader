@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -46,39 +45,21 @@ type fastToken struct {
 }
 
 // 利用文件的sha1 hash值上传文件获取响应
-func uploadSHA1(uplbURL, file string, pickCode string) (body []byte, fileSHA1 string, e error) {
+func uploadSHA1(uplbURL, file string) (body []byte, fileSHA1 string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("uploadSHA1() error: %w", err)
 		}
 	}()
 
-	f, err := os.Open(file)
+	blockHash, totalHash, err := hashSHA1(file)
 	checkErr(err)
-	defer f.Close()
-	info, err := f.Stat()
-	checkErr(err)
-
-	// 计算文件最前面一个区块的sha1 hash值
-	block := make([]byte, 128*1024)
-	_, err = f.Read(block)
-	checkErr(err)
-	data := sha1.Sum(block)
-	blockHash := hex.EncodeToString(data[:])
-	_, err = f.Seek(0, io.SeekStart)
-	checkErr(err)
-
-	// 计算整个文件的sha1 hash值
-	h := sha1.New()
-	_, err = io.Copy(h, f)
-	checkErr(err)
-	totalHash := hex.EncodeToString(h.Sum(nil))
 
 	preID := blockHash
 	filename := filepath.Base(file)
 	fileID := strings.ToUpper(totalHash)
 	quickID := fileID
-	data = sha1.Sum([]byte(userID + fileID + quickID + pickCode + target + "0"))
+	data := sha1.Sum([]byte(userID + fileID + quickID + target + "0"))
 	hash := hex.EncodeToString(data[:])
 	sigStr := userKey + hash + endString
 	data = sha1.Sum([]byte(sigStr))
@@ -88,6 +69,9 @@ func uploadSHA1(uplbURL, file string, pickCode string) (body []byte, fileSHA1 st
 	if *verbose {
 		log.Printf("sig的值是：%s", sig)
 	}
+
+	info, err := os.Stat(file)
+	checkErr(err)
 
 	form := url.Values{}
 	form.Set("preid", preID)
@@ -126,7 +110,7 @@ func fastUploadFile(file string) (token fastToken, e error) {
 
 	log.Println("秒传模式上传文件：" + file)
 
-	body, fileSHA1, err := uploadSHA1(initURL, file, "")
+	body, fileSHA1, err := uploadSHA1(initURL, file)
 	checkErr(err)
 	token.SHA1 = fileSHA1
 
