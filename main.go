@@ -21,12 +21,12 @@ import (
 )
 
 // const tokenURL = "https://uplb.115.com/3.0/gettoken.php"
+// const resumeURL = "https://uplb.115.com/3.0/resumeupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 
 const (
 	infoURL       = "https://proapi.115.com/app/uploadinfo"
 	sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
 	initURL       = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
-	resumeURL     = "https://uplb.115.com/3.0/resumeupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
 	appVer        = "23.8.0"
