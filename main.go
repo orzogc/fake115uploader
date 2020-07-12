@@ -40,7 +40,6 @@ var (
 	upload          *bool
 	multipartUpload *bool
 	configDir       *string
-	resultDir       *string
 	verbose         *bool
 	userID          string
 	userKey         string
@@ -55,8 +54,9 @@ var (
 
 // 设置数据
 type uploadConfig struct {
-	Cookies string `json:"cookies"`
-	CID     uint64 `json:"cid"`
+	Cookies   string `json:"cookies"`   // 115网页版的Cookie
+	CID       uint64 `json:"cid"`       // 115里文件夹的cid
+	ResultDir string `json:"resultDir"` // 在指定文件夹保存上传结果
 }
 
 // 上传结果数据
@@ -134,13 +134,13 @@ func exitPrint() {
 		if err := recover(); err != nil {
 			log.Printf("exitPrint() error: %v", err)
 			// 不保存上传结果
-			*resultDir = ""
+			config.ResultDir = ""
 			exitPrint()
 		}
 	}()
 
-	if *resultDir != "" {
-		resultFile := filepath.Join(*resultDir, getTime()+" result.json")
+	if config.ResultDir != "" {
+		resultFile := filepath.Join(config.ResultDir, getTime()+" result.json")
 		log.Printf("上传结果保存在 %s", resultFile)
 		data, err := json.MarshalIndent(result, "", "    ")
 		checkErr(err)
@@ -252,12 +252,24 @@ func initialize() (e error) {
 	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
+	resultDir := flag.String("r", "", "将上传结果保存在指定`文件夹`")
 	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
-	resultDir = flag.String("r", "", "将上传结果保存在指定`文件夹`")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
 	flag.Parse()
+
+	if *configDir == "" {
+		path, err := os.Executable()
+		checkErr(err)
+		*configDir = filepath.Dir(path)
+	}
+
+	if !*noConfig {
+		err := loadConfig()
+		checkErr(err)
+	}
+
 	if flag.NFlag() == 0 {
 		log.Println("请输入正确的参数")
 		flag.PrintDefaults()
@@ -270,17 +282,6 @@ func initialize() (e error) {
 	if (*fastUpload && *upload) || (*fastUpload && *multipartUpload) || (*upload && *multipartUpload) {
 		log.Println("-f、-u和-m这三个参数只能同时用其中一个")
 		os.Exit(1)
-	}
-
-	if *configDir == "" {
-		path, err := os.Executable()
-		checkErr(err)
-		*configDir = filepath.Dir(path)
-	}
-
-	if !*noConfig {
-		err := loadConfig()
-		checkErr(err)
 	}
 
 	// 优先使用参数指定的Cookie
@@ -300,6 +301,19 @@ func initialize() (e error) {
 		config.CID = *cid
 	}
 	target = "U_1_" + strconv.FormatUint(config.CID, 10)
+
+	// 优先使用参数指定的文件夹
+	if *resultDir != "" {
+		config.ResultDir = *resultDir
+	}
+	if config.ResultDir != "" {
+		info, err := os.Stat(config.ResultDir)
+		checkErr(err)
+		if !info.IsDir() {
+			log.Printf("%s 必须是文件夹，请重新设置", config.ResultDir)
+			os.Exit(1)
+		}
+	}
 
 	err := getUserKey()
 	checkErr(err)
