@@ -140,7 +140,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	bar.Set(pb.SIBytesPrefix, true)
 	defer bar.Finish()
 
-	fmt.Println("按q键停止下载并退出程序")
+	fmt.Println("按q键停止上传并退出程序")
 	var tempChunks []oss.FileChunk
 	if sp != nil {
 		tempChunks = chunks[len(sp.Parts):]

@@ -248,7 +248,7 @@ func initialize() (e error) {
 
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
-	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断下载再重启下载（实验性质，请谨慎使用，注意断点时间不要过长）")
+	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要太长）")
 	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
