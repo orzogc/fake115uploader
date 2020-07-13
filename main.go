@@ -33,6 +33,7 @@ const (
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
+	linkPrefix    = "115://"
 )
 
 var (
@@ -40,6 +41,7 @@ var (
 	upload          *bool
 	multipartUpload *bool
 	hashFile        *string
+	inputFile       *string
 	configDir       *string
 	verbose         *bool
 	userID          string
@@ -256,6 +258,7 @@ func initialize() (e error) {
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要太长）")
 	hashFile = flag.String("b", "", "将指定文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）追加写入到指定的`保存文件`")
+	inputFile = flag.String("i", "", "从指定的`文本文件`逐行读取115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）并将其对应文件导入到115中，hashlink可以没有115://前缀")
 	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
@@ -296,6 +299,19 @@ func initialize() (e error) {
 		if !os.IsNotExist(err) {
 			if info.IsDir() {
 				log.Printf("%s 不能是文件夹", *hashFile)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if *inputFile != "" {
+		info, err := os.Stat(*inputFile)
+		if os.IsNotExist(err) {
+			log.Printf("%s 不存在", *inputFile)
+			os.Exit(1)
+		} else {
+			if info.IsDir() {
+				log.Printf("%s 不能是文件夹", *inputFile)
 				os.Exit(1)
 			}
 		}
@@ -428,7 +444,6 @@ func main() {
 				}
 				result.Success = append(result.Success, file)
 			}
-		case *hashFile != "":
 		}
 	}
 	// 等待一秒
@@ -438,5 +453,10 @@ func main() {
 		err := write115Link()
 		checkErr(err)
 		log.Printf("成功将文件的115 hashlink保存在 %s", *hashFile)
+	}
+
+	if *inputFile != "" {
+		err := uploadLinkFile()
+		checkErr(err)
 	}
 }

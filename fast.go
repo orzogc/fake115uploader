@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -44,19 +43,15 @@ type fastToken struct {
 	SHA1       string   // 文件的sha1 hash值
 }
 
-// 利用文件的sha1 hash值上传文件获取响应
-func uploadSHA1(uplbURL, file string) (body []byte, fileSHA1 string, e error) {
+// 上传SHA1的值到115
+func uploadSHA1(filename, fileSize, totalHash, blockHash string) (body []byte, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("uploadSHA1() error: %w", err)
 		}
 	}()
 
-	blockHash, totalHash, err := hashSHA1(file)
-	checkErr(err)
-
 	preID := blockHash
-	filename := filepath.Base(file)
 	fileID := strings.ToUpper(totalHash)
 	quickID := fileID
 	data := sha1.Sum([]byte(userID + fileID + quickID + target + "0"))
@@ -64,14 +59,11 @@ func uploadSHA1(uplbURL, file string) (body []byte, fileSHA1 string, e error) {
 	sigStr := userKey + hash + endString
 	data = sha1.Sum([]byte(sigStr))
 	sig := strings.ToUpper(hex.EncodeToString(data[:]))
-	uploadURL := fmt.Sprintf(uplbURL, appVer, sig)
+	uploadURL := fmt.Sprintf(initURL, appVer, sig)
 
 	if *verbose {
 		log.Printf("sig的值是：%s", sig)
 	}
-
-	info, err := os.Stat(file)
-	checkErr(err)
 
 	form := url.Values{}
 	form.Set("preid", preID)
@@ -79,7 +71,7 @@ func uploadSHA1(uplbURL, file string) (body []byte, fileSHA1 string, e error) {
 	form.Set("quickid", quickID)
 	form.Set("user_id", userID)
 	form.Set("app_ver", appVer)
-	form.Set("filesize", strconv.FormatInt(info.Size(), 10))
+	form.Set("filesize", fileSize)
 	form.Set("userid", userID)
 	form.Set("exif", "")
 	form.Set("target", target)
@@ -97,7 +89,27 @@ func uploadSHA1(uplbURL, file string) (body []byte, fileSHA1 string, e error) {
 	body, err = ioutil.ReadAll(resp.Body)
 	checkErr(err)
 
-	return body, fileID, nil
+	return body, nil
+}
+
+// 利用文件的sha1 hash值上传文件获取响应
+func uploadFileSHA1(file string) (body []byte, fileSHA1 string, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("uploadFileSHA1() error: %w", err)
+		}
+	}()
+
+	blockHash, totalHash, err := hashSHA1(file)
+	checkErr(err)
+
+	info, err := os.Stat(file)
+	checkErr(err)
+
+	body, err = uploadSHA1(info.Name(), strconv.FormatInt(info.Size(), 10), totalHash, blockHash)
+	checkErr(err)
+
+	return body, totalHash, nil
 }
 
 // 以秒传模式上传文件
@@ -110,7 +122,7 @@ func fastUploadFile(file string) (token fastToken, e error) {
 
 	log.Println("秒传模式上传文件：" + file)
 
-	body, fileSHA1, err := uploadSHA1(initURL, file)
+	body, fileSHA1, err := uploadFileSHA1(file)
 	checkErr(err)
 	token.SHA1 = fileSHA1
 
