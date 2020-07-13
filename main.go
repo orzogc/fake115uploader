@@ -28,7 +28,8 @@ const (
 	sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
 	initURL       = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
-	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
+	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&limit=%d&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
+	downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
 	appVer        = "23.8.0"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
@@ -42,6 +43,7 @@ var (
 	multipartUpload *bool
 	hashFile        *string
 	inputFile       *string
+	outputFile      *string
 	configDir       *string
 	verbose         *bool
 	userID          string
@@ -259,6 +261,7 @@ func initialize() (e error) {
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要太长）")
 	hashFile = flag.String("b", "", "将指定文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）追加写入到指定的`保存文件`")
 	inputFile = flag.String("i", "", "从指定的`文本文件`逐行读取115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）并将其对应文件导入到115中，hashlink可以没有115://前缀")
+	outputFile = flag.String("o", "", "从cid指定的115文件夹导出该文件夹内（包括子文件夹）所有文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）到指定的`保存文件`")
 	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
@@ -312,6 +315,16 @@ func initialize() (e error) {
 		} else {
 			if info.IsDir() {
 				log.Printf("%s 不能是文件夹", *inputFile)
+				os.Exit(1)
+			}
+		}
+	}
+
+	if *outputFile != "" {
+		info, err := os.Stat(*outputFile)
+		if !os.IsNotExist(err) {
+			if info.IsDir() {
+				log.Printf("%s 不能是文件夹", *hashFile)
 				os.Exit(1)
 			}
 		}
@@ -378,9 +391,11 @@ func main() {
 		time.Sleep(time.Second)
 
 		info, err := os.Stat(file)
-		checkErr(err)
+		if err != nil {
+			log.Printf("获取 %s 的状态出现错误：%v", file, err)
+		}
 		if info.IsDir() {
-			log.Panicf("%s 是目录，取消上传", file)
+			log.Printf("%s 是目录，取消上传", file)
 			continue
 		}
 
@@ -457,6 +472,12 @@ func main() {
 
 	if *inputFile != "" {
 		err := uploadLinkFile()
+		checkErr(err)
+		log.Printf("成功将 %s 里的115 hashlink导入到115", *inputFile)
+	}
+
+	if *outputFile != "" {
+		err := exportHashLink()
 		checkErr(err)
 	}
 }

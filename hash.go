@@ -74,15 +74,23 @@ func write115Link() (e error) {
 	defer f.Close()
 
 	for _, file := range flag.Args() {
+		log.Printf("开始生成 %s 的115 hashlink", file)
 		hashLink, err := hash115Link(file)
-		checkErr(err)
+		if err != nil {
+			log.Printf("生成 %s 的115 hashlink失败，错误：%v", file, err)
+			continue
+		}
 		_, err = f.WriteString(hashLink + "\n")
-		checkErr(err)
+		if err != nil {
+			log.Printf("将115 hashlink写入 %s 出现错误：%v", *hashFile, err)
+			continue
+		}
 	}
 
 	return nil
 }
 
+// 利用115 hashlink导入文件到115
 func upload115Link(hashLink string) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -107,14 +115,15 @@ func upload115Link(hashLink string) (e error) {
 	v, err := p.ParseBytes(body)
 	checkErr(err)
 	if v.GetInt("status") == 2 && v.GetInt("statuscode") == 0 {
-		log.Printf("上传115 hashlink成功：%s", hashLink)
+		log.Printf("导入115 hashlink成功：%s", hashLink)
 	} else {
-		log.Panicf("上传115 hashlink失败：%s", hashLink)
+		log.Panicf("导入115 hashlink失败：%s", hashLink)
 	}
 
 	return nil
 }
 
+// 将文件里的115 hashlink导入到115
 func uploadLinkFile() (e error) {
 	defer func() {
 		if err := recover(); err != nil {

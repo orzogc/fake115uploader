@@ -15,7 +15,6 @@ import (
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/cheggaaa/pb/v3"
-	"github.com/valyala/fastjson"
 )
 
 // 上传进度存档文件的数据
@@ -234,11 +233,8 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	}
 
 	// 验证上传是否成功
-	fileURL := fmt.Sprintf(listFileURL, userID, appVer, config.CID)
-	body, err := getURL(fileURL)
-	checkErr(err)
-	var p fastjson.Parser
-	v, err := p.ParseBytes(body)
+	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
+	v, err := getURLJSON(fileURL)
 	checkErr(err)
 	s := string(v.GetArray("data")[0].GetStringBytes("sha1"))
 	if s == ft.SHA1 {

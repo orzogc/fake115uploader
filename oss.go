@@ -49,6 +49,22 @@ func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	}
 }
 
+// 获取网页请求响应的json
+func getURLJSON(url string) (v *fastjson.Value, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("getURLJSON() error: %w", err)
+		}
+	}()
+
+	body, err := getURL(url)
+	checkErr(err)
+	var p fastjson.Parser
+	v, err = p.ParseBytes(body)
+	checkErr(err)
+	return v, nil
+}
+
 // 以GET请求获取网页内容
 func getURL(url string) (body []byte, e error) {
 	defer func() {
@@ -134,11 +150,8 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 	checkErr(err)
 
 	// 验证上传是否成功
-	fileURL := fmt.Sprintf(listFileURL, userID, appVer, config.CID)
-	body, err := getURL(fileURL)
-	checkErr(err)
-	var p fastjson.Parser
-	v, err := p.ParseBytes(body)
+	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
+	v, err := getURLJSON(fileURL)
 	checkErr(err)
 	s := string(v.GetArray("data")[0].GetStringBytes("sha1"))
 	if s == ft.SHA1 {
