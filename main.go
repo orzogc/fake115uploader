@@ -30,7 +30,7 @@ const (
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&limit=%d&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
 	downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
-	appVer        = "23.8.0"
+	appVer        = "25.0.0"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"

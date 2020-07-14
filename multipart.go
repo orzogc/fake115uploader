@@ -232,6 +232,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 		log.Printf("cmur的值是：%+v", cmur)
 	}
 
+	time.Sleep(time.Second)
 	// 验证上传是否成功
 	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
 	v, err := getURLJSON(fileURL)
