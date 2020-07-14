@@ -470,14 +470,15 @@ func main() {
 		log.Printf("成功将文件的115 hashlink保存在 %s", *hashFile)
 	}
 
+	if *outputFile != "" {
+		err := exportHashLink()
+		checkErr(err)
+		log.Printf("成功将cid为 %d 的文件夹内的所有文件的115 hashlink保存在 %s", config.CID, *outputFile)
+	}
+
 	if *inputFile != "" {
 		err := uploadLinkFile()
 		checkErr(err)
 		log.Printf("成功将 %s 里的115 hashlink导入到115", *inputFile)
-	}
-
-	if *outputFile != "" {
-		err := exportHashLink()
-		checkErr(err)
 	}
 }

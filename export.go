@@ -108,7 +108,7 @@ func exportHashLink() (e error) {
 
 		blockHash, err := getBlockHash(pickCode)
 		if err != nil {
-			log.Printf("无法获取 %s 的blockhash，错误：%v", filename, err)
+			log.Printf("无法获取 %s 的blockhash，出现错误：%v", filename, err)
 			continue
 		}
 

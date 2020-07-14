@@ -77,7 +77,7 @@ func write115Link() (e error) {
 		log.Printf("开始生成 %s 的115 hashlink", file)
 		hashLink, err := hash115Link(file)
 		if err != nil {
-			log.Printf("生成 %s 的115 hashlink失败，错误：%v", file, err)
+			log.Printf("生成 %s 的115 hashlink失败，出现错误：%v", file, err)
 			continue
 		}
 		_, err = f.WriteString(hashLink + "\n")
@@ -139,6 +139,7 @@ func uploadLinkFile() (e error) {
 	for scanner.Scan() {
 		err := upload115Link(scanner.Text())
 		if err != nil {
+			log.Printf("导入115 hashlink出现错误：%v", err)
 			result.Failed = append(result.Failed, scanner.Text())
 			continue
 		}
