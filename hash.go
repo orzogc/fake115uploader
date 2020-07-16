@@ -32,7 +32,7 @@ func hashSHA1(file string) (blockHash, totalHash string, e error) {
 	_, err = f.Read(block)
 	checkErr(err)
 	data := sha1.Sum(block)
-	blockHash = hex.EncodeToString(data[:])
+	blockHash = strings.ToUpper(hex.EncodeToString(data[:]))
 	_, err = f.Seek(0, io.SeekStart)
 	checkErr(err)
 
@@ -40,7 +40,7 @@ func hashSHA1(file string) (blockHash, totalHash string, e error) {
 	h := sha1.New()
 	_, err = io.Copy(h, f)
 	checkErr(err)
-	totalHash = hex.EncodeToString(h.Sum(nil))
+	totalHash = strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
 
 	return blockHash, totalHash, nil
 }
@@ -57,7 +57,7 @@ func hash115Link(file string) (hashLink string, e error) {
 	checkErr(err)
 	info, err := os.Stat(file)
 	checkErr(err)
-	hashLink = linkPrefix + info.Name() + "|" + strconv.FormatInt(info.Size(), 10) + "|" + strings.ToUpper(totalHash) + "|" + strings.ToUpper(blockHash)
+	hashLink = linkPrefix + info.Name() + "|" + strconv.FormatInt(info.Size(), 10) + "|" + totalHash + "|" + blockHash
 	return hashLink, nil
 }
 
