@@ -103,6 +103,11 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	checkErr(err)
 
 	if sp == nil {
+		// 断点续传模式上传的文件大小不能小于1KB
+		if info.Size() <= 1024 {
+			log.Printf("%s 的大小小于1KB，改用普通模式上传", file)
+			return ossUploadFile(ft, file)
+		}
 		// 上传的文件大小不能超过115GB
 		if info.Size() > 115*1024*1024*1024 {
 			return fmt.Errorf("%s 的大小超过115GB，取消上传", file)
@@ -140,7 +145,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	bar.Set(pb.SIBytesPrefix, true)
 	defer bar.Finish()
 
-	fmt.Println("按q键停止上传并退出程序")
+	fmt.Println("按q键停止上传并退出程序，断点续传模式会自动保存上传进度")
 	var tempChunks []oss.FileChunk
 	if sp != nil {
 		tempChunks = chunks[len(sp.Parts):]
