@@ -158,15 +158,15 @@ func exitPrint() {
 		checkErr(err)
 	}
 
-	fmt.Println("上传成功的文件：")
+	fmt.Printf("上传成功的文件（%d）：", len(result.Success))
 	for _, s := range result.Success {
 		fmt.Println(s)
 	}
-	fmt.Println("上传失败的文件：")
+	fmt.Printf("上传失败的文件（%d）：", len(result.Failed))
 	for _, s := range result.Failed {
 		fmt.Println(s)
 	}
-	fmt.Println("保存上传进度的文件：")
+	fmt.Printf("保存上传进度的文件（%d）：", len(result.Saved))
 	for _, s := range result.Saved {
 		fmt.Println(s)
 	}
