@@ -69,7 +69,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	log.Println("断点续传模式上传文件：" + file)
 
 	// 存档文件保存在设置文件所在文件夹内
-	saveFile := filepath.Join(*configDir, filepath.Base(file)) + ".json"
+	saveFile := filepath.Join(*configDir, filepath.Base(file)+".json")
 	if sp != nil {
 		data, err := ioutil.ReadFile(saveFile)
 		checkErr(err)

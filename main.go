@@ -423,7 +423,7 @@ func main() {
 			result.Success = append(result.Success, file)
 		case *multipartUpload:
 			// 存档文件保存在设置文件所在文件夹内
-			saveFile := filepath.Join(*configDir, filepath.Base(file)) + ".json"
+			saveFile := filepath.Join(*configDir, filepath.Base(file)+".json")
 			info, err := os.Stat(saveFile)
 			if os.IsNotExist(err) {
 				token, err := fastUploadFile(file)
