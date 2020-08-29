@@ -103,7 +103,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	checkErr(err)
 
 	if sp == nil {
-		// 断点续传模式上传的文件大小不能小于1KB
+		// 断点续传模式上传的文件大小不能小于1KB（1KB这个大小属于推测，没详细测试过）
 		if info.Size() <= 1024 {
 			log.Printf("%s 的大小小于1KB，改用普通模式上传", file)
 			return ossUploadFile(ft, file)
@@ -230,7 +230,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	)
 	// EOF错误是xml的Unmarshal导致的，响应其实是json格式，所以实际上上传是成功的
 	if err != nil && !errors.Is(err, io.EOF) {
-		log.Panicln(err)
+		panicln(err)
 	}
 	if *verbose {
 		log.Printf("CompleteMultipartUpload的响应头的值是：\n%+v", header)
@@ -251,7 +251,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			checkErr(err)
 		}
 	} else {
-		log.Panicf("断点续传模式上传 %s 失败", file)
+		panicln(fmt.Errorf("断点续传模式上传 %s 失败", file))
 	}
 
 	return nil

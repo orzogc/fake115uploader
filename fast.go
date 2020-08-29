@@ -146,7 +146,7 @@ func fastUploadFile(file string) (token fastToken, e error) {
 
 		return token, fmt.Errorf("秒传模式上传 %s 失败", file)
 	} else {
-		log.Panicf("秒传模式上传 %s 失败", file)
+		panicln(fmt.Errorf("秒传模式上传 %s 失败", file))
 	}
 
 	return token, nil

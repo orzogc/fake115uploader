@@ -30,7 +30,7 @@ const (
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&limit=%d&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
 	downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
-	appVer        = "25.0.0"
+	appVer        = "25.2.0"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
@@ -74,8 +74,14 @@ type resultData struct {
 // 检查错误
 func checkErr(err error) {
 	if err != nil {
-		log.Panicln(err)
+		panicln(err)
 	}
+}
+
+// 打印错误然后panic
+func panicln(err error) {
+	log.Println(err)
+	panic(err)
 }
 
 // 获取时间
@@ -199,7 +205,7 @@ func getUserKey() (e error) {
 	userKey = string(v.GetStringBytes("userkey"))
 
 	if userID == "0" {
-		log.Panicln("获取userkey出错，请确定cookies是否设置好")
+		panicln(fmt.Errorf("获取userkey出错，请确定cookies是否设置好"))
 	}
 
 	if *verbose {
@@ -235,7 +241,7 @@ func loadConfig() (e error) {
 			err = json.Unmarshal(data, &config)
 			checkErr(err)
 		} else {
-			log.Panicln("设置文件config.json的内容不符合json格式，请检查其内容")
+			panicln(fmt.Errorf("设置文件config.json的内容不符合json格式，请检查其内容"))
 			os.Exit(1)
 		}
 	}
@@ -368,12 +374,6 @@ func initialize() (e error) {
 }
 
 func main() {
-	defer func() {
-		if err := recover(); err != nil {
-			log.Printf("main() error: %v", err)
-		}
-	}()
-
 	go handleQuit()
 
 	err := initialize()

@@ -102,10 +102,10 @@ func upload115Link(hashLink string) (e error) {
 	link := strings.Split(s, "|")
 
 	if len(link) != 4 || len(link[2]) != 40 || len(link[3]) != 40 {
-		log.Panicf("%s 不符合115 hashlink的格式", hashLink)
+		panicln(fmt.Errorf("%s 不符合115 hashlink的格式", hashLink))
 	}
 	if _, err := strconv.ParseUint(link[1], 10, 64); err != nil {
-		log.Panicf("%s 不符合115 hashlink的格式", hashLink)
+		panicln(fmt.Errorf("%s 不符合115 hashlink的格式", hashLink))
 	}
 
 	body, err := uploadSHA1(link[0], link[1], link[2], link[3])
@@ -117,7 +117,7 @@ func upload115Link(hashLink string) (e error) {
 	if v.GetInt("status") == 2 && v.GetInt("statuscode") == 0 {
 		log.Printf("导入115 hashlink成功：%s", hashLink)
 	} else {
-		log.Panicf("导入115 hashlink失败：%s", hashLink)
+		panicln(fmt.Errorf("导入115 hashlink失败：%s", hashLink))
 	}
 
 	return nil
