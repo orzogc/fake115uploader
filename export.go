@@ -32,14 +32,14 @@ func getBlockHash(pickCode string) (blockHash string, e error) {
 	checkErr(err)
 	defer resp.Body.Close()
 
-	var cookies []string
-	for _, cookie := range resp.Header["Set-Cookie"] {
+	setCookie := resp.Header["Set-Cookie"]
+	cookies := make([]string, len(setCookie))
+	for i, cookie := range setCookie {
 		if *verbose {
 			log.Printf("响应要求设置的Cookie是：%v", cookie)
 		}
 
-		c := strings.Split(cookie, ";")
-		cookies = append(cookies, c[0])
+		cookies[i] = strings.Split(cookie, ";")[0]
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
