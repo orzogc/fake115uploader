@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -230,7 +231,10 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	)
 	// EOF错误是xml的Unmarshal导致的，响应其实是json格式，所以实际上上传是成功的
 	if err != nil && !errors.Is(err, io.EOF) {
-		panicln(err)
+		// 当文件名含有 &< 这两个字符之一时响应的xml解析会出现错误，实际上上传是成功的
+		if filename := filepath.Base(file); !strings.ContainsAny(filename, "&<") {
+			panicln(err)
+		}
 	}
 	if *verbose {
 		log.Printf("CompleteMultipartUpload的响应头的值是：\n%+v", header)
