@@ -133,9 +133,13 @@ func fastUploadFile(file string) (token fastToken, e error) {
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)
 	checkErr(err)
-	if v.GetInt("status") == 2 && v.GetInt("statuscode") == 0 {
+	if v.GetInt("status") == 2 && v.Exists("statuscode") && v.GetInt("statuscode") == 0 {
 		log.Printf("秒传模式上传 %s 成功", file)
-	} else if v.GetInt("status") == 1 && v.GetInt("statuscode") == 0 {
+		if *removeFile {
+			err = remove(file)
+			checkErr(err)
+		}
+	} else if v.GetInt("status") == 1 && v.Exists("statuscode") && v.GetInt("statuscode") == 0 {
 		// 秒传失败的响应包含普通上传模式和断点续传模式的token
 		err = json.Unmarshal(body, &token)
 		checkErr(err)

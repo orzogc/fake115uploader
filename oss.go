@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
@@ -39,7 +40,7 @@ func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	case oss.TransferStartedEvent:
 		bar = pb.Full.Start64(event.TotalBytes)
 		bar.Set(pb.Bytes, true)
-		bar.Set(pb.SIBytesPrefix, true)
+		//bar.Set(pb.SIBytesPrefix, true)
 	case oss.TransferDataEvent:
 		bar.SetCurrent(event.ConsumedBytes)
 	case oss.TransferCompletedEvent:
@@ -159,12 +160,26 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
 	v, err := getURLJSON(fileURL)
 	checkErr(err)
-	s := string(v.GetArray("data")[0].GetStringBytes("sha1"))
+	s := string(v.GetStringBytes("data", "0", "sha1"))
 	if s == ft.SHA1 {
 		log.Printf("普通模式上传 %s 成功", file)
+		if *removeFile {
+			err = remove(file)
+			checkErr(err)
+		}
 	} else {
 		panic(fmt.Errorf("普通模式上传 %s 失败", file))
 	}
 
+	return nil
+}
+
+// 删除文件
+func remove(file string) error {
+	err := os.Remove(file)
+	if err != nil {
+		return fmt.Errorf("删除原文件 %s 出现错误：%w", file, err)
+	}
+	log.Printf("成功删除原文件 %s", file)
 	return nil
 }

@@ -143,7 +143,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 		bar.SetCurrent(int64(len(sp.Parts)) * sp.Chunks[0].Size)
 	}
 	bar.Set(pb.Bytes, true)
-	bar.Set(pb.SIBytesPrefix, true)
+	//bar.Set(pb.SIBytesPrefix, true)
 	defer bar.Finish()
 
 	fmt.Println("按q键停止上传并退出程序，断点续传模式会自动保存上传进度")
@@ -246,12 +246,16 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
 	v, err := getURLJSON(fileURL)
 	checkErr(err)
-	s := string(v.GetArray("data")[0].GetStringBytes("sha1"))
+	s := string(v.GetStringBytes("data", "0", "sha1"))
 	if s == ft.SHA1 {
 		log.Printf("断点续传模式上传 %s 成功", file)
 		if sp != nil {
 			log.Printf("删除存档文件 %s", saveFile)
 			err = os.Remove(saveFile)
+			checkErr(err)
+		}
+		if *removeFile {
+			err = remove(file)
 			checkErr(err)
 		}
 	} else {

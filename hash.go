@@ -114,7 +114,7 @@ func upload115Link(hashLink string) (e error) {
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)
 	checkErr(err)
-	if v.GetInt("status") == 2 && v.GetInt("statuscode") == 0 {
+	if v.GetInt("status") == 2 && v.Exists("statuscode") && v.GetInt("statuscode") == 0 {
 		log.Printf("导入115 hashlink成功：%s", hashLink)
 	} else {
 		panic(fmt.Errorf("导入115 hashlink失败：%s", hashLink))
