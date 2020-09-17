@@ -237,7 +237,6 @@ func loadConfig() (e error) {
 			checkErr(err)
 		} else {
 			panic(fmt.Errorf("设置文件config.json的内容不符合json格式，请检查其内容"))
-			os.Exit(1)
 		}
 	}
 
