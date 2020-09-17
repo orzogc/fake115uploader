@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/cheggaaa/pb/v3"
@@ -100,7 +101,12 @@ func getOSSToken() (token ossToken, e error) {
 	var info uploadInfo
 	err = json.Unmarshal(body, &info)
 	checkErr(err)
-	token.endpoint = info.Endpoint
+	if *internal {
+		i := strings.Index(info.Endpoint, ".aliyuncs.com")
+		token.endpoint = info.Endpoint[:i] + "-internal" + info.Endpoint[i:]
+	} else {
+		token.endpoint = info.Endpoint
+	}
 
 	if *verbose {
 		log.Printf("info的值：\n%+v", info)

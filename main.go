@@ -45,6 +45,7 @@ var (
 	inputFile       *string
 	outputFile      *string
 	configDir       *string
+	internal        *bool
 	verbose         *bool
 	userID          string
 	userKey         string
@@ -272,6 +273,7 @@ func initialize() (e error) {
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
 	resultDir := flag.String("r", "", "将上传结果保存在指定`文件夹`")
+	internal = flag.Bool("a", false, "利用阿里云内网上传文件，需要阿里云服务器运行本程序")
 	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
