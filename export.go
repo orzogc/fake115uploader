@@ -82,7 +82,7 @@ func exportHashLink() (e error) {
 	checkErr(err)
 	path := v.GetArray("path")
 	if string(path[len(path)-1].GetStringBytes("cid")) != strconv.FormatUint(config.CID, 10) {
-		panicln(fmt.Errorf("cid %d 不正确", config.CID))
+		panic(fmt.Errorf("cid %d 不正确", config.CID))
 	}
 	count := v.GetUint("count")
 
@@ -91,7 +91,7 @@ func exportHashLink() (e error) {
 	checkErr(err)
 	data := v.GetArray("data")
 	if len(data) == 0 {
-		panicln(fmt.Errorf("无法获取cid为 %d 的文件夹下的文件列表", config.CID))
+		panic(fmt.Errorf("无法获取cid为 %d 的文件夹下的文件列表", config.CID))
 	}
 
 	f, err := os.OpenFile(*outputFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)

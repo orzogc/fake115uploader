@@ -75,14 +75,8 @@ type resultData struct {
 // 检查错误
 func checkErr(err error) {
 	if err != nil {
-		panicln(err)
+		panic(err)
 	}
-}
-
-// 打印错误然后panic
-func panicln(err error) {
-	log.Println(err)
-	panic(err)
 }
 
 // 获取时间
@@ -206,7 +200,7 @@ func getUserKey() (e error) {
 	userKey = string(v.GetStringBytes("userkey"))
 
 	if userID == "0" {
-		panicln(fmt.Errorf("获取userkey出错，请确定cookies是否设置好"))
+		panic(fmt.Errorf("获取userkey出错，请确定cookies是否设置好"))
 	}
 
 	if *verbose {
@@ -242,7 +236,7 @@ func loadConfig() (e error) {
 			err = json.Unmarshal(data, &config)
 			checkErr(err)
 		} else {
-			panicln(fmt.Errorf("设置文件config.json的内容不符合json格式，请检查其内容"))
+			panic(fmt.Errorf("设置文件config.json的内容不符合json格式，请检查其内容"))
 			os.Exit(1)
 		}
 	}

@@ -163,7 +163,7 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 	if s == ft.SHA1 {
 		log.Printf("普通模式上传 %s 成功", file)
 	} else {
-		panicln(fmt.Errorf("普通模式上传 %s 失败", file))
+		panic(fmt.Errorf("普通模式上传 %s 失败", file))
 	}
 
 	return nil

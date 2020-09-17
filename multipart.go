@@ -233,7 +233,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 	if err != nil && !errors.Is(err, io.EOF) {
 		// 当文件名含有 &< 这两个字符之一时响应的xml解析会出现错误，实际上上传是成功的
 		if filename := filepath.Base(file); !strings.ContainsAny(filename, "&<") {
-			panicln(err)
+			panic(err)
 		}
 	}
 	if *verbose {
@@ -255,7 +255,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			checkErr(err)
 		}
 	} else {
-		panicln(fmt.Errorf("断点续传模式上传 %s 失败", file))
+		panic(fmt.Errorf("断点续传模式上传 %s 失败", file))
 	}
 
 	return nil

@@ -114,7 +114,7 @@ func uploadFile(file string) (e error) {
 	info, err := os.Stat(file)
 	checkErr(err)
 	if info.Size() > 5*1024*1024*1024 {
-		panicln(fmt.Errorf("%s 的大小超过5GB，目前上传的单个文件大小不能超过5GB", file))
+		panic(fmt.Errorf("%s 的大小超过5GB，目前上传的单个文件大小不能超过5GB", file))
 	}
 
 	token, err := getUploadToken(file)
@@ -149,7 +149,7 @@ func uploadFile(file string) (e error) {
 	if v.GetBool("state") == true && v.GetInt("code") == 0 {
 		log.Printf("普通模式上传 %s 成功", file)
 	} else {
-		panicln(fmt.Errorf("普通模式上传 %s 失败", file))
+		panic(fmt.Errorf("普通模式上传 %s 失败", file))
 	}
 
 	return nil
