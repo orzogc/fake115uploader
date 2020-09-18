@@ -132,6 +132,9 @@ func handleQuit() {
 
 	keyboard.Close()
 	exitPrint()
+	if len(result.Failed) != 0 {
+		os.Exit(1)
+	}
 	os.Exit(0)
 }
 
@@ -371,6 +374,12 @@ func initialize() (e error) {
 }
 
 func main() {
+	defer func() {
+		if len(result.Failed) != 0 {
+			os.Exit(1)
+		}
+	}()
+
 	go handleQuit()
 
 	err := initialize()
