@@ -13,7 +13,7 @@
 ### 使用方法
 首先要先运行一次 `fake115uploader` 生成设置文件config.json（使用 `-d 文件夹` 指定存放设置文件的文件夹，默认为程序所在的文件夹），然后登陆网页版115，按F12后刷新，将115网页请求的Cookie的值全部复制到config.json的cookies的值里（参考[这里](https://github.com/LSD08KM/Fake115Upload_Python3#cookies%E5%9C%A8%E5%93%AA%E9%87%8C)），或者运行时用参数 `-k Cookie` 指定要用的Cookie。
 
-`fake115uploader -f 文件` 秒传模式上传文件，可以指定多个文件且必须是最后一个参数，下同。
+`fake115uploader -f 文件` 秒传模式上传文件，可以指定多个文件且文件必须是最后一个参数，下同。
 
 `fake115uploader -u 文件` 先尝试用秒传模式上传文件，失败后改用普通模式上传。
 

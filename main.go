@@ -30,7 +30,7 @@ const (
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&limit=%d&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
 	downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
-	appVer        = "25.2.0"
+	appVer        = "25.3.0"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
@@ -244,11 +244,6 @@ func loadConfig() (e error) {
 		}
 	}
 
-	// 去掉last_video_volume
-	//i := strings.Index(config.Cookies, "last_video_volume=")
-	//j := strings.Index(config.Cookies, "UID=")
-	//config.Cookies = config.Cookies[:i] + config.Cookies[j:]
-
 	return nil
 }
 
@@ -268,7 +263,7 @@ func initialize() (e error) {
 	outputFile = flag.String("o", "", "从cid指定的115文件夹导出该文件夹内（包括子文件夹）所有文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）到指定的`保存文件`")
 	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
-	cid := flag.Uint64("c", 0, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
+	cid := flag.Uint64("c", 1, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
 	resultDir := flag.String("r", "", "将上传结果保存在指定`文件夹`")
 	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
 	internal = flag.Bool("a", false, "利用阿里云内网上传文件，需要在阿里云服务器上运行本程序")
@@ -349,7 +344,7 @@ func initialize() (e error) {
 	}
 
 	// 优先使用参数指定的cid
-	if *cid != 0 {
+	if *cid != 1 {
 		config.CID = *cid
 	}
 	target = "U_1_" + strconv.FormatUint(config.CID, 10)
