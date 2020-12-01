@@ -255,6 +255,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			checkErr(err)
 		}
 		if *removeFile {
+			f.Close()
 			err = remove(file)
 			checkErr(err)
 		}
