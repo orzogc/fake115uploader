@@ -23,12 +23,11 @@ func getBlockHash(pickCode string) (blockHash string, e error) {
 	}()
 
 	dlURL := fmt.Sprintf(downloadURL, pickCode)
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodGet, dlURL, nil)
 	checkErr(err)
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 
@@ -58,7 +57,7 @@ func getBlockHash(pickCode string) (blockHash string, e error) {
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", strings.Join(cookies, ";"))
 	req.Header.Set("Range", "bytes=0-131071")
-	resp, err = client.Do(req)
+	resp, err = httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)

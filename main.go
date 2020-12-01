@@ -57,6 +57,7 @@ var (
 	errStopUpload   = errors.New("暂停上传")
 	quit            = make(chan int)
 	multipartCh     = make(chan int)
+	httpClient      = &http.Client{}
 )
 
 // 设置数据
@@ -186,12 +187,11 @@ func getUserKey() (e error) {
 		}
 	}()
 
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodGet, infoURL, nil)
 	checkErr(err)
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)

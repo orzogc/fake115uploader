@@ -75,12 +75,11 @@ func getURL(url string) (body []byte, e error) {
 		}
 	}()
 
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	checkErr(err)
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)

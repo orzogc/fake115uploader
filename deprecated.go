@@ -79,13 +79,12 @@ func getUploadToken(file string) (token uploadToken, e error) {
 	form.Set("filesize", strconv.FormatInt(info.Size(), 10))
 	form.Set("target", target)
 
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, sampleInitURL, strings.NewReader(form.Encode()))
 	checkErr(err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -123,7 +122,6 @@ func uploadFile(file string) (e error) {
 	reader, writer := io.Pipe()
 	defer reader.Close()
 	defer writer.Close()
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, token.Host, reader)
 	checkErr(err)
 
@@ -133,7 +131,7 @@ func uploadFile(file string) (e error) {
 
 	go readMultiParts(writer, mwriter, file, token)
 
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)

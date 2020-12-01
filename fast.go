@@ -77,13 +77,12 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string) (body []byte, e
 	form.Set("target", target)
 	form.Set("fileid", fileID)
 
-	client := http.Client{}
 	req, err := http.NewRequest(http.MethodPost, uploadURL, strings.NewReader(form.Encode()))
 	checkErr(err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := client.Do(req)
+	resp, err := httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)
