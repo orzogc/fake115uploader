@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"github.com/cheggaaa/pb/v3"
@@ -155,11 +156,12 @@ func ossUploadFile(ft fastToken, file string) (e error) {
 	err = bucket.PutObjectFromFile(ft.Object, file, options...)
 	checkErr(err)
 
+	time.Sleep(time.Second)
 	// 验证上传是否成功
-	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
+	fileURL := fmt.Sprintf(listFileURL, config.CID, 20)
 	v, err := getURLJSON(fileURL)
 	checkErr(err)
-	s := string(v.GetStringBytes("data", "0", "sha1"))
+	s := string(v.GetStringBytes("data", "0", "sha"))
 	if s == ft.SHA1 {
 		log.Printf("普通模式上传 %s 成功", file)
 		if *removeFile {

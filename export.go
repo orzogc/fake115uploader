@@ -38,7 +38,7 @@ func getBlockHash(pickCode string) (blockHash string, e error) {
 			log.Printf("响应要求设置的Cookie是：%v", cookie)
 		}
 
-		cookies[i] = strings.Split(cookie, ";")[0]
+		cookies[i] = strings.Split(cookie, "; ")[0]
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -55,7 +55,7 @@ func getBlockHash(pickCode string) (blockHash string, e error) {
 	req, err = http.NewRequest(http.MethodGet, fileURL, nil)
 	checkErr(err)
 	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Cookie", strings.Join(cookies, ";"))
+	req.Header.Set("Cookie", strings.Join(cookies, "; "))
 	req.Header.Set("Range", "bytes=0-131071")
 	resp, err = httpClient.Do(req)
 	checkErr(err)
@@ -76,7 +76,7 @@ func exportHashLink() (e error) {
 		}
 	}()
 
-	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
+	fileURL := fmt.Sprintf(listFileURL, config.CID, 20)
 	v, err := getURLJSON(fileURL)
 	checkErr(err)
 	path := v.GetArray("path")
@@ -85,7 +85,7 @@ func exportHashLink() (e error) {
 	}
 	count := v.GetUint("count")
 
-	fileURL = fmt.Sprintf(listFileURL, count, userID, appVer, config.CID)
+	fileURL = fmt.Sprintf(listFileURL, config.CID, count)
 	v, err = getURLJSON(fileURL)
 	checkErr(err)
 	data := v.GetArray("data")
@@ -98,9 +98,9 @@ func exportHashLink() (e error) {
 	defer f.Close()
 
 	for _, file := range data {
-		filename := string(file.GetStringBytes("fn"))
-		fileSize := string(file.GetStringBytes("fs"))
-		totalHash := string(file.GetStringBytes("sha1"))
+		filename := string(file.GetStringBytes("n"))
+		fileSize := file.GetUint64("s")
+		totalHash := string(file.GetStringBytes("sha"))
 		pickCode := string(file.GetStringBytes("pc"))
 
 		log.Printf("正在获取 %s 的115 hashlink", filename)
@@ -111,7 +111,7 @@ func exportHashLink() (e error) {
 			continue
 		}
 
-		hashLink := linkPrefix + filename + "|" + fileSize + "|" + strings.ToUpper(totalHash) + "|" + strings.ToUpper(blockHash)
+		hashLink := linkPrefix + filename + "|" + strconv.FormatUint(fileSize, 10) + "|" + strings.ToUpper(totalHash) + "|" + strings.ToUpper(blockHash)
 		_, err = f.WriteString(hashLink + "\n")
 		if err != nil {
 			log.Printf("将115 hashlink写入 %s 出现错误：%v", *outputFile, err)

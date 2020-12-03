@@ -243,10 +243,10 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 
 	time.Sleep(time.Second)
 	// 验证上传是否成功
-	fileURL := fmt.Sprintf(listFileURL, 20, userID, appVer, config.CID)
+	fileURL := fmt.Sprintf(listFileURL, config.CID, 20)
 	v, err := getURLJSON(fileURL)
 	checkErr(err)
-	s := string(v.GetStringBytes("data", "0", "sha1"))
+	s := string(v.GetStringBytes("data", "0", "sha"))
 	if s == ft.SHA1 {
 		log.Printf("断点续传模式上传 %s 成功", file)
 		if sp != nil {

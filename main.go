@@ -28,9 +28,9 @@ const (
 	sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
 	initURL       = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
-	listFileURL   = "https://proapi.115.com/android/2.0/ufile/files?offset=0&limit=%d&user_id=%s&app_ver=%s&show_dir=0&cid=%d"
+	listFileURL   = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
 	downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
-	appVer        = "25.3.0"
+	appVer        = "26.2.1"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
