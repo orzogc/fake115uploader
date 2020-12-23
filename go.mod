@@ -12,7 +12,7 @@ require (
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/valyala/fastjson v1.6.3
-	golang.org/x/sys v0.0.0-20201202213521-69691e467435 // indirect
-	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
+	golang.org/x/sys v0.0.0-20201223074533-0d417f636930 // indirect
+	golang.org/x/time v0.0.0-20201208040808-7e3f01d25324 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )

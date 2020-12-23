@@ -22,6 +22,7 @@ import (
 
 // const tokenURL = "https://uplb.115.com/3.0/gettoken.php"
 // const resumeURL = "https://uplb.115.com/3.0/resumeupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
+// downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
 
 const (
 	infoURL       = "https://proapi.115.com/app/uploadinfo"
@@ -29,8 +30,8 @@ const (
 	initURL       = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL   = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
-	downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
-	appVer        = "26.2.1"
+	downloadURL   = "http://proapi.115.com/app/chrome/downurl"
+	appVer        = "26.2.2"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"

@@ -7,47 +7,53 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 
 	"github.com/valyala/fastjson"
+
+	"github.com/orzogc/fake115uploader/cipher"
 )
 
 // 根据pickcode获取blockhash
-func getBlockHash(pickCode string) (blockHash string, e error) {
+func getBlockHash(pickCode, fileID string) (blockHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("getBlockHash() error: %w", err)
 		}
 	}()
 
-	dlURL := fmt.Sprintf(downloadURL, pickCode)
-	req, err := http.NewRequest(http.MethodGet, dlURL, nil)
+	c, err := cipher.NewCipher()
 	checkErr(err)
+	text, err := c.Encrypt([]byte(fmt.Sprintf(`{"pickcode":"%s"}`, pickCode)))
+	checkErr(err)
+	form := url.Values{}
+	form.Set("data", string(text))
+	req, err := http.NewRequest(http.MethodPost, downloadURL, strings.NewReader(form.Encode()))
+	checkErr(err)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
 	resp, err := httpClient.Do(req)
 	checkErr(err)
 	defer resp.Body.Close()
 
-	setCookie := resp.Header["Set-Cookie"]
-	cookies := make([]string, len(setCookie))
-	for i, cookie := range setCookie {
-		if *verbose {
-			log.Printf("响应要求设置的Cookie是：%v", cookie)
-		}
-
-		cookies[i] = strings.Split(cookie, "; ")[0]
-	}
-
 	body, err := ioutil.ReadAll(resp.Body)
 	checkErr(err)
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)
 	checkErr(err)
+	if !v.GetBool("state") {
+		panic(fmt.Errorf("获取文件下载地址失败"))
+	}
 
-	fileURL := string(v.GetStringBytes("file_url"))
+	text, err = c.Decrypt(v.GetStringBytes("data"))
+	checkErr(err)
+	v, err = p.ParseBytes(text)
+	checkErr(err)
+	fileURL := string(v.GetStringBytes(fileID, "url", "url"))
 	if *verbose {
 		log.Printf("下载地址是：%s", fileURL)
 	}
@@ -55,7 +61,7 @@ func getBlockHash(pickCode string) (blockHash string, e error) {
 	req, err = http.NewRequest(http.MethodGet, fileURL, nil)
 	checkErr(err)
 	req.Header.Set("User-Agent", userAgent)
-	req.Header.Set("Cookie", strings.Join(cookies, "; "))
+	req.Header.Set("Cookie", config.Cookies)
 	req.Header.Set("Range", "bytes=0-131071")
 	resp, err = httpClient.Do(req)
 	checkErr(err)
@@ -102,10 +108,11 @@ func exportHashLink() (e error) {
 		fileSize := file.GetUint64("s")
 		totalHash := string(file.GetStringBytes("sha"))
 		pickCode := string(file.GetStringBytes("pc"))
+		fileID := string(file.GetStringBytes("fid"))
 
 		log.Printf("正在获取 %s 的115 hashlink", filename)
 
-		blockHash, err := getBlockHash(pickCode)
+		blockHash, err := getBlockHash(pickCode, fileID)
 		if err != nil {
 			log.Printf("无法获取 %s 的blockhash，出现错误：%v", filename, err)
 			continue
