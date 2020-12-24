@@ -30,7 +30,7 @@ const (
 	initURL       = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL   = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
-	downloadURL   = "http://proapi.115.com/app/chrome/downurl"
+	downloadURL   = "https://proapi.115.com/app/chrome/downurl"
 	appVer        = "26.2.2"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
