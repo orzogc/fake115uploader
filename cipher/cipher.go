@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	gKeyS = []byte{0x29, 0x23, 0x21, 0x5e}
 	gKeyL = []byte{0x42, 0xda, 0x13, 0xba, 0x78, 0x76, 0x8d, 0x37, 0xe8, 0xee, 0x04, 0x91}
 	gKts  = []byte{0xf0, 0xe5, 0x69, 0xae, 0xbf, 0xdc, 0xbf, 0x5a, 0x1a, 0x45, 0xe8, 0xbe, 0x7d, 0xa6, 0x73, 0x88, 0xde, 0x8f, 0xe7, 0xc4, 0x45, 0xda, 0x86, 0x94, 0x9b, 0x69, 0x92, 0x0b, 0x6a, 0xb8, 0xf1, 0x7a, 0x38, 0x06, 0x3c, 0x95, 0x26, 0x6d, 0x2c, 0x56, 0x00, 0x70, 0x56, 0x9c, 0x36, 0x38, 0x62, 0x76, 0x2f, 0x9b, 0x5f, 0x0f, 0xf2, 0xfe, 0xfd, 0x2d, 0x70, 0x9c, 0x86, 0x44, 0x8f, 0x3d, 0x14, 0x27, 0x71, 0x93, 0x8a, 0xe4, 0x0e, 0xc1, 0x48, 0xae, 0xdc, 0x34, 0x7f, 0xcf, 0xfe, 0xb2, 0x7f, 0xf6, 0x55, 0x9a, 0x46, 0xc8, 0xeb, 0x37, 0x77, 0xa4, 0xe0, 0x6b, 0x72, 0x93, 0x7e, 0x51, 0xcb, 0xf1, 0x37, 0xef, 0xad, 0x2a, 0xde, 0xee, 0xf9, 0xc9, 0x39, 0x6b, 0x32, 0xa1, 0xba, 0x35, 0xb1, 0xb8, 0xbe, 0xda, 0x78, 0x73, 0xf8, 0x20, 0xd5, 0x27, 0x04, 0x5a, 0x6f, 0xfd, 0x5e, 0x72, 0x39, 0xcf, 0x3b, 0x9c, 0x2b, 0x57, 0x5c, 0xf9, 0x7c, 0x4b, 0x7b, 0xd2, 0x12, 0x66, 0xcc, 0x77, 0x09, 0xa6}
 )
@@ -41,14 +40,14 @@ wlHF+mkTJpKd5Wacef0vV+xumqNorvLpIXWKwxNaoHM=
 -----END RSA PRIVATE KEY-----`
 )
 
-// Cipher 加密解密
+// Cipher 加密解密信息
 type Cipher struct {
 	publicKey  *rsa.PublicKey
 	privateKey *rsa.PrivateKey
 	randKey    []byte
 }
 
-// NewCipher 新建cipher
+// NewCipher 新建Cipher
 func NewCipher() (*Cipher, error) {
 	c := new(Cipher)
 	block, _ := pem.Decode([]byte(publicKey))
@@ -58,7 +57,7 @@ func NewCipher() (*Cipher, error) {
 	}
 	publicKey, ok := key.(*rsa.PublicKey)
 	if !ok {
-		return nil, fmt.Errorf("public key is not a rsa key: %+v", key)
+		return nil, fmt.Errorf("public key is not a RSA public key: %+v", key)
 	}
 	c.publicKey = publicKey
 
@@ -79,7 +78,9 @@ func NewCipher() (*Cipher, error) {
 	return c, nil
 }
 
-func genKey(randKey []byte, keyLen int) (xorKey []byte) {
+// 生成key
+func genKey(randKey []byte, keyLen int) []byte {
+	xorKey := make([]byte, 0, keyLen)
 	length := keyLen * (keyLen - 1)
 	index := 0
 	if len(randKey) != 0 {
@@ -94,7 +95,9 @@ func genKey(randKey []byte, keyLen int) (xorKey []byte) {
 	return xorKey
 }
 
-func xor(src, key []byte) (secret []byte) {
+// 利用key进行异或操作
+func xor(src, key []byte) []byte {
+	secret := make([]byte, 0, len(src))
 	pad := len(src) % 4
 	if pad > 0 {
 		for i := 0; i < pad; i++ {
@@ -122,14 +125,15 @@ func (c *Cipher) Encrypt(plainText []byte) ([]byte, error) {
 	for i, j := 0, len(tmp)-1; i < j; i, j = i+1, j-1 {
 		tmp[i], tmp[j] = tmp[j], tmp[i]
 	}
-	xorText := xor(tmp, gKeyL)
-	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, c.publicKey, append(c.randKey, xorText...))
+	xorText := make([]byte, 0, len(c.randKey)+len(tmp))
+	xorText = append(xorText, c.randKey...)
+	xorText = append(xorText, xor(tmp, gKeyL)...)
+	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, c.publicKey, xorText)
 	if err != nil {
 		return nil, err
 	}
 	text := make([]byte, base64.StdEncoding.EncodedLen(len(cipherText)))
 	base64.StdEncoding.Encode(text, cipherText)
-	//text := base64.StdEncoding.EncodeToString(cipherText)
 
 	return text, nil
 }
@@ -143,7 +147,7 @@ func (c *Cipher) Decrypt(cipherText []byte) ([]byte, error) {
 	}
 	text = text[:n]
 	blockCount := len(text) / blockSize
-	var plainText []byte
+	plainText := make([]byte, 0, blockCount*blockSize)
 	for i := 0; i < blockCount; i++ {
 		t, err := rsa.DecryptPKCS1v15(rand.Reader, c.privateKey, text[i*blockSize:(i+1)*blockSize])
 		if err != nil {

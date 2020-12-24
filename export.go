@@ -18,15 +18,13 @@ import (
 )
 
 // 根据pickcode获取blockhash
-func getBlockHash(pickCode, fileID string) (blockHash string, e error) {
+func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("getBlockHash() error: %w", err)
 		}
 	}()
 
-	c, err := cipher.NewCipher()
-	checkErr(err)
 	text, err := c.Encrypt([]byte(fmt.Sprintf(`{"pickcode":"%s"}`, pickCode)))
 	checkErr(err)
 	form := url.Values{}
@@ -103,6 +101,8 @@ func exportHashLink() (e error) {
 	checkErr(err)
 	defer f.Close()
 
+	c, err := cipher.NewCipher()
+	checkErr(err)
 	for _, file := range data {
 		filename := string(file.GetStringBytes("n"))
 		fileSize := file.GetUint64("s")
@@ -112,7 +112,7 @@ func exportHashLink() (e error) {
 
 		log.Printf("正在获取 %s 的115 hashlink", filename)
 
-		blockHash, err := getBlockHash(pickCode, fileID)
+		blockHash, err := getBlockHash(c, pickCode, fileID)
 		if err != nil {
 			log.Printf("无法获取 %s 的blockhash，出现错误：%v", filename, err)
 			continue

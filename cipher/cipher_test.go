@@ -22,7 +22,7 @@ func TestParseKey(t *testing.T) {
 		t.Errorf("public key parsing error: %v", err)
 	}
 	if _, ok := key.(*rsa.PublicKey); !ok {
-		t.Errorf("public key is not a rsa key: %+v", key)
+		t.Errorf("public key is not a RSA public key: %+v", key)
 	}
 
 	block, _ = pem.Decode([]byte(privateKey))
