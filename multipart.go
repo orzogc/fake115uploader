@@ -20,7 +20,7 @@ import (
 
 // 上传进度存档文件的数据
 type saveProgress struct {
-	FastToken fastToken
+	FastToken *fastToken
 	Chunks    []oss.FileChunk
 	Imur      oss.InitiateMultipartUploadResult
 	Parts     []oss.UploadPart
@@ -43,7 +43,7 @@ func (listener *multipartProgressListener) ProgressChanged(event *oss.ProgressEv
 }
 
 // 获取ossToken和bucket
-func getBucket(bucketName string) (ot ossToken, bucket *oss.Bucket, e error) {
+func getBucket(bucketName string) (ot *ossToken, bucket *oss.Bucket, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("getBucket() error: %w", err)
@@ -60,7 +60,7 @@ func getBucket(bucketName string) (ot ossToken, bucket *oss.Bucket, e error) {
 }
 
 // 利用oss的接口以multipart的方式上传文件，sp不为nil时恢复上次的上传
-func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) {
+func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("multipartUploadFile() error: %w", err)
@@ -138,14 +138,14 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 		checkErr(err)
 	}
 
-	bar = pb.Full.Start64(info.Size())
+	fmt.Println("按q键停止上传并退出程序，断点续传模式会自动保存上传进度")
+	bar = pb.New64(info.Size()).SetTemplate(pb.Full).Set(pb.Bytes, true)
 	if sp != nil {
 		bar.SetCurrent(int64(len(sp.Parts)) * sp.Chunks[0].Size)
 	}
-	bar.Set(pb.Bytes, true)
+	bar.Start()
 	defer bar.Finish()
 
-	fmt.Println("按q键停止上传并退出程序，断点续传模式会自动保存上传进度")
 	var tempChunks []oss.FileChunk
 	if sp != nil {
 		tempChunks = chunks[len(sp.Parts):]
@@ -167,7 +167,7 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 			err = ioutil.WriteFile(saveFile, data, 0644)
 			checkErr(err)
 			result.Saved = append(result.Saved, file)
-			multipartCh <- 0
+			multipartCh <- struct{}{}
 			return errStopUpload
 		default:
 			var part oss.UploadPart
@@ -268,5 +268,5 @@ func multipartUploadFile(ft fastToken, file string, sp *saveProgress) (e error) 
 // 恢复上传文件
 func resumeUpload(file string) (e error) {
 	sp := new(saveProgress)
-	return multipartUploadFile(fastToken{}, file, sp)
+	return multipartUploadFile(nil, file, sp)
 }

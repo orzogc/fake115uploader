@@ -1,6 +1,7 @@
 fake115uploader
 *.json
 *.7z
+*.gz
 test/
 
 # Binaries for programs and plugins

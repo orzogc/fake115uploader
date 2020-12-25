@@ -40,15 +40,21 @@ func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, 
 
 	body, err := ioutil.ReadAll(resp.Body)
 	checkErr(err)
+	if *verbose {
+		log.Printf("获取下载地址的响应为 %s", string(body))
+	}
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)
 	checkErr(err)
 	if !v.GetBool("state") {
-		panic(fmt.Errorf("获取文件下载地址失败"))
+		panic(fmt.Errorf("获取pickcode为 %s 的文件的下载地址失败，响应是 %s", pickCode, string(body)))
 	}
 
 	text, err = c.Decrypt(v.GetStringBytes("data"))
 	checkErr(err)
+	if *verbose {
+		log.Printf("下载信息的data为 %s", string(text))
+	}
 	v, err = p.ParseBytes(text)
 	checkErr(err)
 	fileURL := string(v.GetStringBytes(fileID, "url", "url"))

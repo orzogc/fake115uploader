@@ -112,13 +112,14 @@ func uploadFileSHA1(file string) (body []byte, fileSHA1 string, e error) {
 }
 
 // 以秒传模式上传文件
-func fastUploadFile(file string) (token fastToken, e error) {
+func fastUploadFile(file string) (token *fastToken, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("fastUploadFile() error: %w", err)
 		}
 	}()
 
+	token = new(fastToken)
 	log.Println("秒传模式上传文件：" + file)
 
 	body, fileSHA1, err := uploadFileSHA1(file)

@@ -57,8 +57,8 @@ var (
 	result          resultData   // 上传结果
 	uploadingPart   bool
 	errStopUpload   = errors.New("暂停上传")
-	quit            = make(chan int)
-	multipartCh     = make(chan int)
+	quit            = make(chan struct{})
+	multipartCh     = make(chan struct{})
 	httpClient      = &http.Client{}
 )
 
@@ -109,7 +109,7 @@ func getInput(ctx context.Context) {
 		case event := <-eventCh:
 			checkErr(event.Err)
 			if string(event.Rune) == "q" || string(event.Rune) == "Q" || event.Key == keyboard.KeyCtrlC {
-				quit <- 0
+				quit <- struct{}{}
 				return
 			}
 		}
@@ -129,7 +129,7 @@ func handleQuit() {
 	log.Println("收到退出信号，正在退出本程序，请等待")
 
 	if uploadingPart {
-		multipartCh <- 0
+		multipartCh <- struct{}{}
 		<-multipartCh
 	}
 
@@ -224,7 +224,7 @@ func loadConfig() (e error) {
 	}()
 
 	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
-		log.Printf("设置文件不存在，新建设置文件%s，请先设置cookies", *configFile)
+		log.Printf("设置文件不存在，新建设置文件 %s ，请先设置cookies", *configFile)
 		data, err := json.MarshalIndent(config, "", "    ")
 		checkErr(err)
 		err = ioutil.WriteFile(*configFile, data, 0644)
@@ -237,7 +237,7 @@ func loadConfig() (e error) {
 			err = json.Unmarshal(data, &config)
 			checkErr(err)
 		} else {
-			panic(fmt.Errorf("设置文件%s的内容不符合json格式，请检查其内容", *configFile))
+			panic(fmt.Errorf("设置文件 %s 的内容不符合json格式，请检查其内容", *configFile))
 		}
 	}
 
@@ -340,7 +340,7 @@ func initialize() (e error) {
 		config.Cookies = *cookies
 	}
 	if config.Cookies == "" {
-		log.Printf("设置文件%s里的cookies不能为空字符串，或者用-k指定115的Cookie", *configFile)
+		log.Printf("设置文件 %s 里的cookies不能为空字符串，或者用-k指定115的Cookie", *configFile)
 		os.Exit(1)
 	}
 	if *verbose {

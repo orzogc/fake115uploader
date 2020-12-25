@@ -39,8 +39,7 @@ type ossProgressListener struct{}
 func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	switch event.EventType {
 	case oss.TransferStartedEvent:
-		bar = pb.Full.Start64(event.TotalBytes)
-		bar.Set(pb.Bytes, true)
+		bar = pb.New64(event.TotalBytes).SetTemplate(pb.Full).Set(pb.Bytes, true).Start()
 	case oss.TransferDataEvent:
 		bar.SetCurrent(event.ConsumedBytes)
 	case oss.TransferCompletedEvent:
@@ -89,13 +88,14 @@ func getURL(url string) (body []byte, e error) {
 }
 
 // 获取oss的token
-func getOSSToken() (token ossToken, e error) {
+func getOSSToken() (token *ossToken, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("getOSSToken() error: %w", err)
 		}
 	}()
 
+	token = new(ossToken)
 	body, err := getURL(getinfoURL)
 	checkErr(err)
 	var info uploadInfo
@@ -125,7 +125,7 @@ func getOSSToken() (token ossToken, e error) {
 }
 
 // 利用oss的接口上传文件
-func ossUploadFile(ft fastToken, file string) (e error) {
+func ossUploadFile(ft *fastToken, file string) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("ossUploadFile() error: %w", err)
