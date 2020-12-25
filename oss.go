@@ -41,7 +41,6 @@ func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	case oss.TransferStartedEvent:
 		bar = pb.Full.Start64(event.TotalBytes)
 		bar.Set(pb.Bytes, true)
-		//bar.Set(pb.SIBytesPrefix, true)
 	case oss.TransferDataEvent:
 		bar.SetCurrent(event.ConsumedBytes)
 	case oss.TransferCompletedEvent:

@@ -45,7 +45,8 @@ var (
 	hashFile        *string
 	inputFile       *string
 	outputFile      *string
-	configDir       *string
+	configFile      *string
+	saveDir         *string
 	internal        *bool
 	removeFile      *bool
 	verbose         *bool
@@ -222,26 +223,21 @@ func loadConfig() (e error) {
 		}
 	}()
 
-	// 设置文件的文件名
-	configFile := "config.json"
-	// 设置文件所在位置，默认是本程序所在的文件夹
-	configFile = filepath.Join(*configDir, configFile)
-
-	if _, err := os.Stat(configFile); os.IsNotExist(err) {
-		log.Println("设置文件不存在，新建设置文件config.json，请先设置cookies")
+	if _, err := os.Stat(*configFile); os.IsNotExist(err) {
+		log.Printf("设置文件不存在，新建设置文件%s，请先设置cookies", *configFile)
 		data, err := json.MarshalIndent(config, "", "    ")
 		checkErr(err)
-		err = ioutil.WriteFile(configFile, data, 0644)
+		err = ioutil.WriteFile(*configFile, data, 0644)
 		checkErr(err)
 		os.Exit(1)
 	} else {
-		data, err := ioutil.ReadFile(configFile)
+		data, err := ioutil.ReadFile(*configFile)
 		checkErr(err)
 		if json.Valid(data) {
 			err = json.Unmarshal(data, &config)
 			checkErr(err)
 		} else {
-			panic(fmt.Errorf("设置文件config.json的内容不符合json格式，请检查其内容"))
+			panic(fmt.Errorf("设置文件%s的内容不符合json格式，请检查其内容", *configFile))
 		}
 	}
 
@@ -262,11 +258,12 @@ func initialize() (e error) {
 	hashFile = flag.String("b", "", "将指定文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）追加写入到指定的`保存文件`")
 	inputFile = flag.String("i", "", "从指定的`文本文件`逐行读取115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）并将其对应文件导入到115中，hashlink可以没有115://前缀")
 	outputFile = flag.String("o", "", "从cid指定的115文件夹导出该文件夹内（包括子文件夹）所有文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）到指定的`保存文件`")
-	configDir = flag.String("d", "", "指定存放设置文件和断点续传存档文件的`文件夹`")
+	configFile = flag.String("l", "", "指定设置`文件`（json格式），默认是程序所在的文件夹里的fake115uploader.json")
+	saveDir = flag.String("d", "", "指定存放断点续传存档文件的`文件夹`，默认是程序所在的文件夹")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
 	cid := flag.Uint64("c", 1, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
 	resultDir := flag.String("r", "", "将上传结果保存在指定`文件夹`")
-	noConfig := flag.Bool("n", false, "不读取设置文件config.json，需要和 -k 配合使用")
+	noConfig := flag.Bool("n", false, "不读取设置文件，需要和 -k 配合使用")
 	internal = flag.Bool("a", false, "利用阿里云内网上传文件，需要在阿里云服务器上运行本程序")
 	removeFile = flag.Bool("e", false, "上传成功后自动删除原文件")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
@@ -274,10 +271,16 @@ func initialize() (e error) {
 
 	flag.Parse()
 
-	if *configDir == "" {
+	if *configFile == "" {
 		path, err := os.Executable()
 		checkErr(err)
-		*configDir = filepath.Dir(path)
+		*configFile = filepath.Join(filepath.Dir(path), "fake115uploader.json")
+	}
+
+	if *saveDir == "" {
+		path, err := os.Executable()
+		checkErr(err)
+		*saveDir = filepath.Dir(path)
 	}
 
 	if !*noConfig {
@@ -337,7 +340,7 @@ func initialize() (e error) {
 		config.Cookies = *cookies
 	}
 	if config.Cookies == "" {
-		log.Println("设置文件config.json里的cookies不能为空字符串，或者用-k指定115的Cookie")
+		log.Printf("设置文件%s里的cookies不能为空字符串，或者用-k指定115的Cookie", *configFile)
 		os.Exit(1)
 	}
 	if *verbose {
@@ -425,7 +428,7 @@ func main() {
 			result.Success = append(result.Success, file)
 		case *multipartUpload:
 			// 存档文件保存在设置文件所在文件夹内
-			saveFile := filepath.Join(*configDir, filepath.Base(file)+".json")
+			saveFile := filepath.Join(*saveDir, filepath.Base(file)+".json")
 			info, err := os.Stat(saveFile)
 			if os.IsNotExist(err) {
 				token, err := fastUploadFile(file)
