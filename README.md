@@ -1,5 +1,5 @@
 # fake115uploader
-模拟115网盘客户端的上传功能，部分实现参考 [Fake115Upload](https://github.com/T3rry7f/Fake115Upload)
+模拟115网盘客户端的上传功能，部分实现参考 [Fake115Upload](https://github.com/T3rry7f/Fake115Upload)，仅用于研究目的
 
 ### 特点
 * 支持秒传模式，需要已经有人上传过指定文件到115

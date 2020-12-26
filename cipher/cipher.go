@@ -45,6 +45,7 @@ type Cipher struct {
 	publicKey  *rsa.PublicKey
 	privateKey *rsa.PrivateKey
 	randKey    []byte
+	keyS       []byte
 }
 
 // NewCipher 新建Cipher
@@ -68,14 +69,71 @@ func NewCipher() (*Cipher, error) {
 	}
 	c.privateKey = privateKey
 
-	randKey := make([]byte, keySize)
-	_, err = rand.Read(randKey)
+	return c, nil
+}
+
+// 生成key
+func (c *Cipher) genKey() error {
+	c.randKey = make([]byte, keySize)
+	_, err := rand.Read(c.randKey)
+	if err != nil {
+		return err
+	}
+	c.keyS = genKey(c.randKey, 4)
+
+	return nil
+}
+
+// Encrypt 加密，一次加密对应一次解密
+func (c *Cipher) Encrypt(plainText []byte) ([]byte, error) {
+	err := c.genKey()
 	if err != nil {
 		return nil, err
 	}
-	c.randKey = randKey
+	tmp := xor(plainText, c.keyS)
+	for i, j := 0, len(tmp)-1; i < j; i, j = i+1, j-1 {
+		tmp[i], tmp[j] = tmp[j], tmp[i]
+	}
+	xorText := make([]byte, 0, len(c.randKey)+len(tmp))
+	xorText = append(xorText, c.randKey...)
+	xorText = append(xorText, xor(tmp, gKeyL)...)
+	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, c.publicKey, xorText)
+	if err != nil {
+		return nil, err
+	}
+	text := make([]byte, base64.StdEncoding.EncodedLen(len(cipherText)))
+	base64.StdEncoding.Encode(text, cipherText)
 
-	return c, nil
+	return text, nil
+}
+
+// Decrypt 解密，一次加密对应一次解密
+func (c *Cipher) Decrypt(cipherText []byte) ([]byte, error) {
+	text := make([]byte, base64.StdEncoding.DecodedLen(len(cipherText)))
+	n, err := base64.StdEncoding.Decode(text, cipherText)
+	if err != nil {
+		return nil, err
+	}
+	text = text[:n]
+	blockCount := len(text) / blockSize
+	plainText := make([]byte, 0, blockCount*blockSize)
+	for i := 0; i < blockCount; i++ {
+		t, err := rsa.DecryptPKCS1v15(rand.Reader, c.privateKey, text[i*blockSize:(i+1)*blockSize])
+		if err != nil {
+			return nil, err
+		}
+		plainText = append(plainText, t...)
+	}
+	randKey := plainText[:keySize]
+	plainText = plainText[keySize:]
+	keyL := genKey(randKey, 12)
+	tmp := xor(plainText, keyL)
+	for i, j := 0, len(tmp)-1; i < j; i, j = i+1, j-1 {
+		tmp[i], tmp[j] = tmp[j], tmp[i]
+	}
+	plainText = xor(tmp, c.keyS)
+
+	return plainText, nil
 }
 
 // 生成key
@@ -116,54 +174,4 @@ func xor(src, key []byte) []byte {
 	}
 
 	return secret
-}
-
-// Encrypt 加密
-func (c *Cipher) Encrypt(plainText []byte) ([]byte, error) {
-	keyS := genKey(c.randKey, 4)
-	tmp := xor(plainText, keyS)
-	for i, j := 0, len(tmp)-1; i < j; i, j = i+1, j-1 {
-		tmp[i], tmp[j] = tmp[j], tmp[i]
-	}
-	xorText := make([]byte, 0, len(c.randKey)+len(tmp))
-	xorText = append(xorText, c.randKey...)
-	xorText = append(xorText, xor(tmp, gKeyL)...)
-	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, c.publicKey, xorText)
-	if err != nil {
-		return nil, err
-	}
-	text := make([]byte, base64.StdEncoding.EncodedLen(len(cipherText)))
-	base64.StdEncoding.Encode(text, cipherText)
-
-	return text, nil
-}
-
-// Decrypt 解密
-func (c *Cipher) Decrypt(cipherText []byte) ([]byte, error) {
-	text := make([]byte, base64.StdEncoding.DecodedLen(len(cipherText)))
-	n, err := base64.StdEncoding.Decode(text, cipherText)
-	if err != nil {
-		return nil, err
-	}
-	text = text[:n]
-	blockCount := len(text) / blockSize
-	plainText := make([]byte, 0, blockCount*blockSize)
-	for i := 0; i < blockCount; i++ {
-		t, err := rsa.DecryptPKCS1v15(rand.Reader, c.privateKey, text[i*blockSize:(i+1)*blockSize])
-		if err != nil {
-			return nil, err
-		}
-		plainText = append(plainText, t...)
-	}
-	randKey := plainText[:keySize]
-	plainText = plainText[keySize:]
-	keyS := genKey(c.randKey, 4)
-	keyL := genKey(randKey, 12)
-	tmp := xor(plainText, keyL)
-	for i, j := 0, len(tmp)-1; i < j; i, j = i+1, j-1 {
-		tmp[i], tmp[j] = tmp[j], tmp[i]
-	}
-	plainText = xor(tmp, keyS)
-
-	return plainText, nil
 }
