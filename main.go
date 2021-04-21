@@ -119,12 +119,15 @@ func getInput(ctx context.Context) {
 // 退出处理
 func handleQuit() {
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM)
+	signal.Notify(ch, os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	select {
 	case <-ch:
 	case <-quit:
 	}
+
+	signal.Stop(ch)
+	signal.Reset(os.Interrupt, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	log.Println("收到退出信号，正在退出本程序，请等待")
 

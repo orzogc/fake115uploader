@@ -16,6 +16,7 @@ import (
 	"github.com/valyala/fastjson"
 )
 
+/*
 type cbackVar struct {
 	PickCode     string `json:"x:pick_code"`
 	UserID       string `json:"x:user_id"`
@@ -23,6 +24,7 @@ type cbackVar struct {
 	Source       string `json:"x:source"`
 	Target       string `json:"x:target"`
 }
+*/
 
 type callback struct {
 	Callback    string `json:"callback"`
