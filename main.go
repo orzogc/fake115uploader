@@ -31,6 +31,7 @@ const (
 	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL   = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
 	downloadURL   = "https://proapi.115.com/app/chrome/downurl"
+	orderURL      = "https://webapi.115.com/files/order"
 	appVer        = "26.2.2"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
@@ -371,6 +372,16 @@ func initialize() (e error) {
 
 	err := getUserKey()
 	checkErr(err)
+
+	// 将cid对应文件夹设置为时间降序
+	orderBody := fmt.Sprintf("user_order=user_ptime&file_id=%d&user_asc=0&fc_mix=0", config.CID)
+	v, err := postFormJSON(orderURL, orderBody)
+	checkErr(err)
+	if !v.GetBool("state") {
+		panic(fmt.Sprintf("排序文件夹 %d 出现错误：%v", config.CID, v.GetStringBytes("error")))
+	} else if *verbose {
+		log.Printf("排序文件夹 %d 成功", config.CID)
+	}
 
 	return nil
 }

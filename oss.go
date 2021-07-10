@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -60,6 +61,31 @@ func getURLJSON(url string) (v *fastjson.Value, e error) {
 
 	body, err := getURL(url)
 	checkErr(err)
+	var p fastjson.Parser
+	v, err = p.ParseBytes(body)
+	checkErr(err)
+	return v, nil
+}
+
+// 获取POST表单请求响应的json
+func postFormJSON(url string, formStr string) (v *fastjson.Value, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("postURL() error: %w", err)
+		}
+	}()
+
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer([]byte(formStr)))
+	checkErr(err)
+	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Cookie", config.Cookies)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp, err := httpClient.Do(req)
+	checkErr(err)
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	checkErr(err)
+
 	var p fastjson.Parser
 	v, err = p.ParseBytes(body)
 	checkErr(err)
