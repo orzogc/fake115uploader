@@ -150,6 +150,19 @@ func getOSSToken() (token *ossToken, e error) {
 	return token, nil
 }
 
+// 获取oss客户端选项
+func getClientOptions() (options []oss.ClientOption) {
+	if proxyHost != "" {
+		if proxyUser != "" {
+			options = append(options, oss.AuthProxy(proxyHost, proxyUser, proxyPassword))
+		} else {
+			options = append(options, oss.Proxy(proxyHost))
+		}
+	}
+
+	return options
+}
+
 // 利用oss的接口上传文件
 func ossUploadFile(ft *fastToken, file string) (e error) {
 	defer func() {
@@ -162,7 +175,7 @@ func ossUploadFile(ft *fastToken, file string) (e error) {
 
 	ot, err := getOSSToken()
 	checkErr(err)
-	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret)
+	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret, getClientOptions()...)
 	checkErr(err)
 	bucket, err := client.Bucket(ft.Bucket)
 	checkErr(err)

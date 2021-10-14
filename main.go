@@ -9,10 +9,12 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -32,7 +34,7 @@ const (
 	listFileURL   = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
 	downloadURL   = "https://proapi.115.com/app/chrome/downurl"
 	orderURL      = "https://webapi.115.com/files/order"
-	appVer        = "26.2.2"
+	appVer        = "29.0.0"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
@@ -60,7 +62,12 @@ var (
 	errStopUpload   = errors.New("暂停上传")
 	quit            = make(chan struct{})
 	multipartCh     = make(chan struct{})
-	httpClient      = &http.Client{}
+	httpClient      = &http.Client{
+		Timeout: 20 * time.Second,
+	}
+	proxyHost     string
+	proxyUser     string
+	proxyPassword string
 )
 
 // 设置数据
@@ -381,6 +388,24 @@ func initialize() (e error) {
 		panic(fmt.Sprintf("排序文件夹 %d 出现错误：%v", config.CID, v.GetStringBytes("error")))
 	} else if *verbose {
 		log.Printf("排序文件夹 %d 成功", config.CID)
+	}
+
+	// http代理，优先使用 https_proxy
+	proxy := strings.TrimSpace(os.Getenv("https_proxy"))
+	if proxy == "" {
+		proxy = strings.TrimSpace(os.Getenv("http_proxy"))
+	}
+	if proxy != "" {
+		proxyURL, err := url.Parse(proxy)
+		if err == nil {
+			proxyHost = "//" + proxyURL.Host
+			if proxyURL.User != nil {
+				proxyUser = proxyURL.User.Username()
+				if password, b := proxyURL.User.Password(); b {
+					proxyPassword = password
+				}
+			}
+		}
 	}
 
 	return nil

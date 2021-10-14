@@ -52,7 +52,7 @@ func getBucket(bucketName string) (ot *ossToken, bucket *oss.Bucket, e error) {
 
 	ot, err := getOSSToken()
 	checkErr(err)
-	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret)
+	client, err := oss.New(ot.endpoint, ot.AccessKeyID, ot.AccessKeySecret, getClientOptions()...)
 	checkErr(err)
 	bucket, err = client.Bucket(bucketName)
 	checkErr(err)
