@@ -34,7 +34,7 @@ func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := httpClient.Do(req)
+	resp, err := doRequest(req)
 	checkErr(err)
 	defer resp.Body.Close()
 
@@ -67,7 +67,7 @@ func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, 
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
 	req.Header.Set("Range", "bytes=0-131071")
-	resp, err = httpClient.Do(req)
+	resp, err = doRequest(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)

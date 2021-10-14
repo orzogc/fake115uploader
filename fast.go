@@ -84,7 +84,7 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string) (body []byte, e
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := httpClient.Do(req)
+	resp, err := doRequest(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err = ioutil.ReadAll(resp.Body)

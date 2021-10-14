@@ -54,6 +54,7 @@ var (
 	removeFile      *bool
 	forbidProxy     *bool
 	ossProxy        *string
+	retry           *uint
 	verbose         *bool
 	userID          string
 	userKey         string
@@ -94,8 +95,7 @@ func checkErr(err error) {
 // 获取时间
 func getTime() string {
 	t := time.Now()
-	timeStr := fmt.Sprintf("%d-%02d-%02d %02d-%02d-%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
-	return timeStr
+	return fmt.Sprintf("%d-%02d-%02d %02d-%02d-%02d", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second())
 }
 
 // 处理输入
@@ -191,6 +191,20 @@ func exitPrint() {
 	}
 }
 
+// 进行http请求
+func doRequest(req *http.Request) (resp *http.Response, err error) {
+	for i := 0; i < int(*retry+1); i++ {
+		resp, err = httpClient.Do(req)
+		if err == nil {
+			return resp, nil
+		} else if *verbose {
+			log.Printf("http请求出现错误：%v", err)
+		}
+	}
+
+	return nil, fmt.Errorf("http请求出现错误：%w", err)
+}
+
 // 获取userID和userKey
 func getUserKey() (e error) {
 	defer func() {
@@ -204,7 +218,7 @@ func getUserKey() (e error) {
 	checkErr(err)
 	req.Header.Set("User-Agent", userAgent)
 	req.Header.Set("Cookie", config.Cookies)
-	resp, err := httpClient.Do(req)
+	resp, err := doRequest(req)
 	checkErr(err)
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
@@ -279,6 +293,7 @@ func initialize() (e error) {
 	removeFile = flag.Bool("e", false, "上传成功后自动删除原文件")
 	forbidProxy = flag.Bool("forbid-oss-proxy", false, "禁止使用代理上传OSS")
 	ossProxy = flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
+	retry = flag.Uint("retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 

@@ -37,7 +37,9 @@
 
 上传文件时加上参数 `-e` ，上传成功后自动删除本地原文件。
 
+运行时加上参数 `-retry 重试次数` 设置HTTP请求失败后的重试次数，默认为0（即不重试）。
+
 运行时加上参数 `-v` 显示更详细的信息（调试用）。
 
-### 代理
-`fake115uploader`的REST请求和OSS上传默认使用环境变量`http_proxy`和`https_proxy`的值作为代理，使用参数`-forbid-oss-proxy`禁止使用代理上传OSS，或者使用参数`-oss-proxy 代理`设置OSS上传代理。
+### 代理设置
+`fake115uploader`的HTTP请求和OSS上传默认使用环境变量`http_proxy`和`https_proxy`的值作为代理，使用参数`-forbid-oss-proxy`禁止使用代理上传OSS，或者使用参数`-oss-proxy 代理`设置OSS上传代理。
