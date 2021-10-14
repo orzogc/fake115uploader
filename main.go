@@ -52,6 +52,8 @@ var (
 	saveDir         *string
 	internal        *bool
 	removeFile      *bool
+	forbidProxy     *bool
+	ossProxy        *string
 	verbose         *bool
 	userID          string
 	userKey         string
@@ -62,12 +64,10 @@ var (
 	errStopUpload   = errors.New("暂停上传")
 	quit            = make(chan struct{})
 	multipartCh     = make(chan struct{})
-	httpClient      = &http.Client{
-		Timeout: 20 * time.Second,
-	}
-	proxyHost     string
-	proxyUser     string
-	proxyPassword string
+	proxyHost       string
+	proxyUser       string
+	proxyPassword   string
+	httpClient      = &http.Client{}
 )
 
 // 设置数据
@@ -277,6 +277,8 @@ func initialize() (e error) {
 	noConfig := flag.Bool("n", false, "不读取设置文件，需要和 -k 配合使用")
 	internal = flag.Bool("a", false, "利用阿里云内网上传文件，需要在阿里云服务器上运行本程序")
 	removeFile = flag.Bool("e", false, "上传成功后自动删除原文件")
+	forbidProxy = flag.Bool("forbid-oss-proxy", false, "禁止使用代理上传OSS")
+	ossProxy = flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
@@ -390,19 +392,25 @@ func initialize() (e error) {
 		log.Printf("排序文件夹 %d 成功", config.CID)
 	}
 
-	// http代理，优先使用 https_proxy
-	proxy := strings.TrimSpace(os.Getenv("https_proxy"))
-	if proxy == "" {
-		proxy = strings.TrimSpace(os.Getenv("http_proxy"))
-	}
-	if proxy != "" {
-		proxyURL, err := url.Parse(proxy)
-		if err == nil {
-			proxyHost = "//" + proxyURL.Host
-			if proxyURL.User != nil {
-				proxyUser = proxyURL.User.Username()
-				if password, b := proxyURL.User.Password(); b {
-					proxyPassword = password
+	// oss代理
+	if !*forbidProxy {
+		// 优先级 ossProxy > http_proxy > https_proxy
+		*ossProxy = strings.TrimSpace(*ossProxy)
+		if *ossProxy == "" {
+			*ossProxy = strings.TrimSpace(os.Getenv("http_proxy"))
+			if *ossProxy == "" {
+				*ossProxy = strings.TrimSpace(os.Getenv("https_proxy"))
+			}
+		}
+		if *ossProxy != "" {
+			proxyURL, err := url.Parse(*ossProxy)
+			if err == nil {
+				proxyHost = "//" + proxyURL.Host
+				if proxyURL.User != nil {
+					proxyUser = proxyURL.User.Username()
+					if password, b := proxyURL.User.Password(); b {
+						proxyPassword = password
+					}
 				}
 			}
 		}
