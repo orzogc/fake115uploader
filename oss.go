@@ -71,7 +71,7 @@ func getURLJSON(url string) (v *fastjson.Value, e error) {
 func postFormJSON(url string, formStr string) (v *fastjson.Value, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("postURL() error: %w", err)
+			e = fmt.Errorf("postFormJSON() error: %w", err)
 		}
 	}()
 

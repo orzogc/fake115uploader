@@ -108,7 +108,7 @@ func upload115Link(hashLink string) (e error) {
 		panic(fmt.Errorf("%s 不符合115 hashlink的格式", hashLink))
 	}
 
-	body, err := uploadSHA1(link[0], link[1], link[2], link[3])
+	body, err := uploadSHA1(link[0], link[1], link[2], link[3], config.CID)
 	checkErr(err)
 
 	var p fastjson.Parser

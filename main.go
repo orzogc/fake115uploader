@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -34,11 +35,14 @@ const (
 	listFileURL   = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
 	downloadURL   = "https://proapi.115.com/app/chrome/downurl"
 	orderURL      = "https://webapi.115.com/files/order"
+	createDirURL  = "https://webapi.115.com/files/add"
+	searchURL     = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
 	appVer        = "29.0.0"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
 	linkPrefix    = "115://"
+	targetPrefix  = "U_1_"
 )
 
 var (
@@ -55,10 +59,10 @@ var (
 	forbidProxy     *bool
 	ossProxy        *string
 	retry           *uint
+	recursive       *bool
 	verbose         *bool
 	userID          string
 	userKey         string
-	target          = "U_1_0"
 	config          uploadConfig // 设置数据
 	result          resultData   // 上传结果
 	uploadingPart   bool
@@ -69,6 +73,7 @@ var (
 	proxyUser       string
 	proxyPassword   string
 	httpClient      = &http.Client{}
+	//target          = "U_1_0"
 )
 
 // 设置数据
@@ -83,6 +88,12 @@ type resultData struct {
 	Success []string `json:"success"` // 上传成功的文件
 	Failed  []string `json:"failed"`  // 上传失败的文件
 	Saved   []string `json:"saved"`   // 保存上传进度的文件
+}
+
+// 要上传的文件的信息
+type fileInfo struct {
+	Path     string `json:"path"`     // 文件路径
+	ParentID uint64 `json:"parentID"` // 要上传到的文件夹的cid
 }
 
 // 检查错误
@@ -240,6 +251,61 @@ func getUserKey() (e error) {
 	return nil
 }
 
+// 在115网盘指定文件夹里创建新文件夹
+func createDir(pid uint64, name string) (cid uint64, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("createDir() error: %w", err)
+		}
+	}()
+
+	form := url.Values{}
+	form.Set("pid", strconv.FormatUint(pid, 10))
+	form.Set("cname", name)
+	v, err := postFormJSON(createDirURL, form.Encode())
+	checkErr(err)
+
+	if v.GetBool("state") {
+		cid, err = strconv.ParseUint(string(v.GetStringBytes("cid")), 10, 64)
+		checkErr(err)
+		if *verbose {
+			log.Printf("成功创建文件夹 %s ，cid：%d", name, cid)
+		}
+		return cid, nil
+	}
+	// 要创建的文件夹已经存在
+	if v.GetInt("errno") == 20004 {
+		reqURL, err := url.Parse(fmt.Sprintf(searchURL, pid))
+		checkErr(err)
+		query := reqURL.Query()
+		query.Set("search_value", name)
+		reqURL.RawQuery = query.Encode()
+		v, err := getURLJSON(reqURL.String())
+		checkErr(err)
+
+		list := v.GetArray("data")
+		for _, v := range list {
+			if v.Exists("fid") {
+				continue
+			}
+			parentID, err := strconv.ParseUint(string(v.GetStringBytes("pid")), 10, 64)
+			if err != nil {
+				continue
+			}
+			if parentID == pid && string(v.GetStringBytes("n")) == name {
+				cid, err = strconv.ParseUint(string(v.GetStringBytes("cid")), 10, 64)
+				checkErr(err)
+				if *verbose {
+					log.Printf("文件夹 %s 已存在，cid：%d", name, cid)
+				}
+				return cid, nil
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("创建文件夹 %s 失败", name)
+}
+
 // 读取设置文件
 func loadConfig() (e error) {
 	defer func() {
@@ -294,6 +360,7 @@ func initialize() (e error) {
 	forbidProxy = flag.Bool("forbid-oss-proxy", false, "禁止使用代理上传OSS")
 	ossProxy = flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
 	retry = flag.Uint("retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
+	recursive = flag.Bool("recursive", false, "递归上传文件夹")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
@@ -326,7 +393,7 @@ func initialize() (e error) {
 		os.Exit(0)
 	}
 	if (*fastUpload && *upload) || (*fastUpload && *multipartUpload) || (*upload && *multipartUpload) {
-		log.Println("-f、-u和-m这三个参数只能同时用其中一个")
+		log.Println("-f、-u和-m这三个参数只能同时使用其中一个")
 		os.Exit(1)
 	}
 
@@ -379,7 +446,6 @@ func initialize() (e error) {
 	if *cid != 1 {
 		config.CID = *cid
 	}
-	target = "U_1_" + strconv.FormatUint(config.CID, 10)
 
 	// 优先使用参数指定的文件夹
 	if *resultDir != "" {
@@ -453,80 +519,90 @@ func main() {
 
 	defer exitPrint()
 
+	files := make([]fileInfo, 0, len(flag.Args()))
+	cidMap := make(map[string]uint64)
 	for _, file := range flag.Args() {
-		// 等待一秒
-		time.Sleep(time.Second)
-
 		info, err := os.Stat(file)
 		if err != nil {
-			log.Printf("获取 %s 的状态出现错误：%v", file, err)
+			log.Printf("获取 %s 的信息出现错误：%v", file, err)
 		}
 		if info.IsDir() {
-			log.Printf("%s 是目录，取消上传", file)
-			continue
-		}
-
-		switch {
-		case *fastUpload:
-			_, err := fastUploadFile(file)
-			if err != nil {
-				log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
-				result.Failed = append(result.Failed, file)
+			// 上传文件夹
+			if *recursive {
+				err = filepath.WalkDir(file, func(path string, d fs.DirEntry, err error) error {
+					if d == nil {
+						return fmt.Errorf("获取文件夹 %s 的信息出现错误，取消上传该文件夹：%w", path, err)
+					}
+					if d.IsDir() {
+						if err != nil {
+							log.Printf("获取文件夹 %s 的信息出现错误，取消上传该文件夹：%v", path, err)
+							return fs.SkipDir
+						}
+						if path == file {
+							var filename string
+							if path == "." {
+								abs, err := filepath.Abs(path)
+								if err != nil {
+									return fmt.Errorf("获取文件夹 %s 的绝对路径失败，取消上传该文件夹：%w", path, err)
+								}
+								filename = filepath.Base(abs)
+							} else {
+								filename = filepath.Base(path)
+							}
+							cid, err := createDir(config.CID, filename)
+							if err != nil {
+								return err
+							}
+							cidMap[path] = cid
+							return nil
+						}
+						pdir := filepath.Dir(path)
+						if pid, ok := cidMap[pdir]; ok {
+							cid, err := createDir(pid, d.Name())
+							if err != nil {
+								return err
+							}
+							cidMap[path] = cid
+						} else {
+							return fmt.Errorf("没有创建文件夹 %s ，取消上传 %s", filepath.Base(pdir), path)
+						}
+					} else {
+						if err != nil {
+							log.Printf("获取文件 %s 的信息出现错误，取消上传该文件：%v", path, err)
+							return nil
+						}
+						pdir := filepath.Dir(path)
+						if pid, ok := cidMap[pdir]; ok {
+							files = append(files, fileInfo{
+								Path:     path,
+								ParentID: pid,
+							})
+						} else {
+							return fmt.Errorf("没有创建文件夹 %s ，取消上传 %s", filepath.Base(pdir), path)
+						}
+					}
+					return nil
+				})
+				if err != nil {
+					log.Printf("上传文件夹 %s 出现错误：%v", file, err)
+					continue
+				}
+			} else {
+				log.Printf("%s 是文件夹，上传文件夹需要参数 -recursive", file)
 				continue
 			}
-			result.Success = append(result.Success, file)
-		case *upload:
-			token, err := fastUploadFile(file)
-			if err != nil {
-				log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
-				log.Printf("现在开始使用普通模式上传 %s", file)
-				err := ossUploadFile(token, file)
-				if err != nil {
-					log.Printf("普通模式上传 %s 出现错误：%v", file, err)
-					result.Failed = append(result.Failed, file)
-					continue
-				}
-			}
-			result.Success = append(result.Success, file)
-		case *multipartUpload:
-			// 存档文件保存在设置文件所在文件夹内
-			saveFile := filepath.Join(*saveDir, filepath.Base(file)+".json")
-			info, err := os.Stat(saveFile)
-			if os.IsNotExist(err) {
-				token, err := fastUploadFile(file)
-				if err != nil {
-					log.Printf("秒传模式上传 %s 出现错误：%v", file, err)
-					log.Println("现在开始使用断点续传模式上传")
-					err := multipartUploadFile(token, file, nil)
-					if err != nil {
-						if errors.Is(err, errStopUpload) {
-							continue
-						}
-						log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
-						result.Failed = append(result.Failed, file)
-						continue
-					}
-				}
-				result.Success = append(result.Success, file)
-			} else {
-				if info.IsDir() {
-					log.Printf("%s 不能是文件夹", saveFile)
-					result.Failed = append(result.Failed, file)
-					continue
-				}
-				log.Printf("发现文件 %s 的上传曾经中断过，现在开始断点续传", file)
-				err := resumeUpload(file)
-				if err != nil {
-					if errors.Is(err, errStopUpload) {
-						continue
-					}
-					log.Printf("断点续传模式上传 %s 出现错误：%v", file, err)
-					result.Failed = append(result.Failed, file)
-					continue
-				}
-				result.Success = append(result.Success, file)
-			}
+		} else {
+			files = append(files, fileInfo{
+				Path:     file,
+				ParentID: config.CID,
+			})
 		}
+	}
+
+	for _, file := range files {
+		// 等待一秒
+		time.Sleep(time.Second)
+		file.uploadFile()
 	}
 	// 等待一秒
 	time.Sleep(time.Second)
@@ -547,5 +623,70 @@ func main() {
 		err := uploadLinkFile()
 		checkErr(err)
 		log.Printf("成功将 %s 里的115 hashlink导入到115", *inputFile)
+	}
+}
+
+// 上传文件
+func (file *fileInfo) uploadFile() {
+	switch {
+	case *fastUpload:
+		_, err := file.fastUploadFile()
+		if err != nil {
+			log.Printf("秒传模式上传 %s 出现错误：%v", file.Path, err)
+			result.Failed = append(result.Failed, file.Path)
+			return
+		}
+		result.Success = append(result.Success, file.Path)
+	case *upload:
+		token, err := file.fastUploadFile()
+		if err != nil {
+			log.Printf("秒传模式上传 %s 出现错误：%v", file.Path, err)
+			log.Printf("现在开始使用普通模式上传 %s", file.Path)
+			err := ossUploadFile(token, file.Path)
+			if err != nil {
+				log.Printf("普通模式上传 %s 出现错误：%v", file.Path, err)
+				result.Failed = append(result.Failed, file.Path)
+				return
+			}
+		}
+		result.Success = append(result.Success, file.Path)
+	case *multipartUpload:
+		// 存档文件保存在设置文件所在文件夹内
+		saveFile := filepath.Join(*saveDir, filepath.Base(file.Path)+".json")
+		info, err := os.Stat(saveFile)
+		if os.IsNotExist(err) {
+			token, err := file.fastUploadFile()
+			if err != nil {
+				log.Printf("秒传模式上传 %s 出现错误：%v", file.Path, err)
+				log.Println("现在开始使用断点续传模式上传")
+				err := multipartUploadFile(token, file.Path, nil)
+				if err != nil {
+					if errors.Is(err, errStopUpload) {
+						return
+					}
+					log.Printf("断点续传模式上传 %s 出现错误：%v", file.Path, err)
+					result.Failed = append(result.Failed, file.Path)
+					return
+				}
+			}
+			result.Success = append(result.Success, file.Path)
+		} else {
+			if info.IsDir() {
+				log.Printf("%s 不能是文件夹", saveFile)
+				result.Failed = append(result.Failed, file.Path)
+				return
+			}
+			log.Printf("发现文件 %s 的上传曾经中断过，现在开始断点续传", file.Path)
+			err := resumeUpload(file.Path)
+			if err != nil {
+				if errors.Is(err, errStopUpload) {
+					return
+				}
+				log.Printf("断点续传模式上传 %s 出现错误：%v", file.Path, err)
+				result.Failed = append(result.Failed, file.Path)
+				return
+			}
+			result.Success = append(result.Success, file.Path)
+		}
 	}
 }

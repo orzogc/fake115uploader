@@ -46,7 +46,7 @@ type fastToken struct {
 }
 
 // 上传SHA1的值到115
-func uploadSHA1(filename, fileSize, totalHash, blockHash string) (body []byte, e error) {
+func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint64) (body []byte, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("uploadSHA1() error: %w", err)
@@ -56,6 +56,7 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string) (body []byte, e
 	preID := blockHash
 	fileID := strings.ToUpper(totalHash)
 	quickID := fileID
+	target := targetPrefix + strconv.FormatUint(targetCID, 10)
 	data := sha1.Sum([]byte(userID + fileID + quickID + target + "0"))
 	hash := hex.EncodeToString(data[:])
 	sigStr := userKey + hash + endString
@@ -94,27 +95,27 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string) (body []byte, e
 }
 
 // 利用文件的sha1 hash值上传文件获取响应
-func uploadFileSHA1(file string) (body []byte, fileSHA1 string, e error) {
+func (file *fileInfo) uploadFileSHA1() (body []byte, fileSHA1 string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("uploadFileSHA1() error: %w", err)
 		}
 	}()
 
-	blockHash, totalHash, err := hashSHA1(file)
+	blockHash, totalHash, err := hashSHA1(file.Path)
 	checkErr(err)
 
-	info, err := os.Stat(file)
+	info, err := os.Stat(file.Path)
 	checkErr(err)
 
-	body, err = uploadSHA1(info.Name(), strconv.FormatInt(info.Size(), 10), totalHash, blockHash)
+	body, err = uploadSHA1(info.Name(), strconv.FormatInt(info.Size(), 10), totalHash, blockHash, file.ParentID)
 	checkErr(err)
 
 	return body, totalHash, nil
 }
 
 // 以秒传模式上传文件
-func fastUploadFile(file string) (token *fastToken, e error) {
+func (file *fileInfo) fastUploadFile() (token *fastToken, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("fastUploadFile() error: %w", err)
@@ -122,23 +123,23 @@ func fastUploadFile(file string) (token *fastToken, e error) {
 	}()
 
 	token = new(fastToken)
-	log.Println("秒传模式上传文件：" + file)
+	log.Println("秒传模式上传文件：" + file.Path)
 
-	body, fileSHA1, err := uploadFileSHA1(file)
+	body, fileSHA1, err := file.uploadFileSHA1()
 	checkErr(err)
 	token.SHA1 = fileSHA1
 
 	if *verbose {
-		log.Printf("秒传模式上传文件 %s 的响应体的内容是：\n%s", file, string(body))
+		log.Printf("秒传模式上传文件 %s 的响应体的内容是：\n%s", file.Path, string(body))
 	}
 
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)
 	checkErr(err)
 	if v.GetInt("status") == 2 && v.Exists("statuscode") && v.GetInt("statuscode") == 0 {
-		log.Printf("秒传模式上传 %s 成功", file)
+		log.Printf("秒传模式上传 %s 成功", file.Path)
 		if *removeFile {
-			err = remove(file)
+			err = remove(file.Path)
 			checkErr(err)
 		}
 	} else if v.GetInt("status") == 1 && v.Exists("statuscode") && v.GetInt("statuscode") == 0 {
@@ -147,12 +148,12 @@ func fastUploadFile(file string) (token *fastToken, e error) {
 		checkErr(err)
 
 		if *verbose {
-			log.Printf("秒传模式上传 %s 失败的响应的json内容是：\n%+v", file, token)
+			log.Printf("秒传模式上传 %s 失败的响应的json内容是：\n%+v", file.Path, token)
 		}
 
-		return token, fmt.Errorf("秒传模式上传 %s 失败", file)
+		return token, fmt.Errorf("秒传模式上传 %s 失败", file.Path)
 	} else {
-		panic(fmt.Errorf("秒传模式上传 %s 失败", file))
+		panic(fmt.Errorf("秒传模式上传 %s 失败", file.Path))
 	}
 
 	return token, nil
