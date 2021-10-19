@@ -8,7 +8,13 @@
 * 支持显示上传进度条
 
 ### 编译安装
-`go install github.com/orzogc/fake115uploader`
+安装最新稳定版本，运行：
+
+`go install github.com/orzogc/fake115uploader@latest`
+
+安装最新git版本，运行：
+
+`go install github.com/orzogc/fake115uploader@master`
 
 ### 使用方法
 首先要先运行一次 `fake115uploader` 生成设置文件fake115uploader.json（使用 `-l 文件` 指定设置文件，默认为程序所在的文件夹里的fake115uploader.json），然后登陆网页版115，按F12后刷新，将115网页请求的Cookie的值全部复制到fake115uploader.json的cookies的值里（参考[这里](https://github.com/LSD08KM/Fake115Upload_Python3#cookies%E5%9C%A8%E5%93%AA%E9%87%8C)），或者运行时用参数 `-k Cookie` 指定要用的Cookie。
@@ -17,7 +23,7 @@
 
 `fake115uploader -u 文件` 先尝试用秒传模式上传文件，失败后改用普通模式上传。
 
-`fake115uploader -m 文件` 先尝试用秒传模式上传文件，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要超过数周）。
+`fake115uploader -m 文件` 先尝试用秒传模式上传文件，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要超过数周）。可以用 `-parts-num 分片数量` 参数指定上传文件的分片数量，数量范围为0到10000。
 
 `fake115uploader -b 保存文件 文件` 将文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）追加写入到指定的保存文件。
 

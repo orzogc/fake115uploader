@@ -43,6 +43,7 @@ const (
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
 	linkPrefix    = "115://"
 	targetPrefix  = "U_1_"
+	maxParts      = 10000
 )
 
 var (
@@ -60,6 +61,7 @@ var (
 	ossProxy        *string
 	retry           *uint
 	recursive       *bool
+	partsNum        *uint
 	verbose         *bool
 	userID          string
 	userKey         string
@@ -73,7 +75,6 @@ var (
 	proxyUser       string
 	proxyPassword   string
 	httpClient      = &http.Client{}
-	//target          = "U_1_0"
 )
 
 // 设置数据
@@ -361,6 +362,7 @@ func initialize() (e error) {
 	ossProxy = flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
 	retry = flag.Uint("retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
 	recursive = flag.Bool("recursive", false, "递归上传文件夹")
+	partsNum = flag.Uint("parts-num", 0, "断点续传模式上传文件的`分片数量`，范围为0到10000")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
@@ -394,6 +396,15 @@ func initialize() (e error) {
 	}
 	if (*fastUpload && *upload) || (*fastUpload && *multipartUpload) || (*upload && *multipartUpload) {
 		log.Println("-f、-u和-m这三个参数只能同时使用其中一个")
+		os.Exit(1)
+	}
+
+	if *partsNum != 0 && !*multipartUpload {
+		log.Println("-parts-num参数只支持断点续传模式")
+		os.Exit(1)
+	}
+	if *partsNum > maxParts {
+		log.Printf("分片数量不能大于%d", maxParts)
 		os.Exit(1)
 	}
 

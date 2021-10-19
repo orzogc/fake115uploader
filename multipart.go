@@ -113,18 +113,24 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 		if info.Size() > 115*1024*1024*1024 {
 			return fmt.Errorf("%s 的大小超过115GB，取消上传", file)
 		}
-		for i := int64(1); i < 10; i++ {
-			if info.Size() < i*1024*1024*1024 {
-				// 文件大小小于iGB时分为i*1000片
-				chunks, err = oss.SplitFileByPartNum(file, int(i*1000))
-				checkErr(err)
-				break
-			}
-		}
-		if info.Size() > 9*1024*1024*1024 {
-			// 文件大小大于9GB时分为10000片
-			chunks, err = oss.SplitFileByPartNum(file, 10000)
+		// 是否指定分片数量
+		if *partsNum != 0 {
+			chunks, err = oss.SplitFileByPartNum(file, int(*partsNum))
 			checkErr(err)
+		} else {
+			for i := int64(1); i < 10; i++ {
+				if info.Size() < i*1024*1024*1024 {
+					// 文件大小小于iGB时分为i*1000片
+					chunks, err = oss.SplitFileByPartNum(file, int(i*1000))
+					checkErr(err)
+					break
+				}
+			}
+			if info.Size() > 9*1024*1024*1024 {
+				// 文件大小大于9GB时分为10000片
+				chunks, err = oss.SplitFileByPartNum(file, maxParts)
+				checkErr(err)
+			}
 		}
 		// 单个分片大小不能小于100KB
 		if chunks[0].Size < 100*1024 {
