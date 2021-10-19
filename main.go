@@ -362,7 +362,7 @@ func initialize() (e error) {
 	ossProxy = flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
 	retry = flag.Uint("retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
 	recursive = flag.Bool("recursive", false, "递归上传文件夹")
-	partsNum = flag.Uint("parts-num", 0, "断点续传模式上传文件的`分片数量`，范围为0到10000")
+	partsNum = flag.Uint("parts-num", 0, "断点续传模式上传文件的`分片数量`，范围为1到10000")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
