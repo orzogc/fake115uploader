@@ -55,7 +55,7 @@ func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 func getURLJSON(url string) (v *fastjson.Value, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("getURLJSON() error: %w", err)
+			e = fmt.Errorf("getURLJSON() error: %v", err)
 		}
 	}()
 
@@ -71,7 +71,7 @@ func getURLJSON(url string) (v *fastjson.Value, e error) {
 func postFormJSON(url string, formStr string) (v *fastjson.Value, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("postFormJSON() error: %w", err)
+			e = fmt.Errorf("postFormJSON() error: %v", err)
 		}
 	}()
 
@@ -96,7 +96,7 @@ func postFormJSON(url string, formStr string) (v *fastjson.Value, e error) {
 func getURL(url string) (body []byte, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("getURL() error: %w", err)
+			e = fmt.Errorf("getURL() error: %v", err)
 		}
 	}()
 
@@ -117,7 +117,7 @@ func getURL(url string) (body []byte, e error) {
 func getOSSToken() (token *ossToken, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("getOSSToken() error: %w", err)
+			e = fmt.Errorf("getOSSToken() error: %v", err)
 		}
 	}()
 
@@ -167,7 +167,7 @@ func getClientOptions() (options []oss.ClientOption) {
 func ossUploadFile(ft *fastToken, file string) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("ossUploadFile() error: %w", err)
+			e = fmt.Errorf("ossUploadFile() error: %v", err)
 		}
 	}()
 

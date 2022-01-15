@@ -19,7 +19,7 @@ import (
 func hashSHA1(file string) (blockHash, totalHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("hashSHA1() error: %w", err)
+			e = fmt.Errorf("hashSHA1() error: %v", err)
 		}
 	}()
 
@@ -49,7 +49,7 @@ func hashSHA1(file string) (blockHash, totalHash string, e error) {
 func hash115Link(file string) (hashLink string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("hash115Link() error: %w", err)
+			e = fmt.Errorf("hash115Link() error: %v", err)
 		}
 	}()
 
@@ -65,7 +65,7 @@ func hash115Link(file string) (hashLink string, e error) {
 func write115Link() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("write115Link() error: %w", err)
+			e = fmt.Errorf("write115Link() error: %v", err)
 		}
 	}()
 
@@ -94,7 +94,7 @@ func write115Link() (e error) {
 func upload115Link(hashLink string) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("upload115Link() error: %w", err)
+			e = fmt.Errorf("upload115Link() error: %v", err)
 		}
 	}()
 
@@ -127,7 +127,7 @@ func upload115Link(hashLink string) (e error) {
 func uploadLinkFile() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("uploadLinkFile() error: %w", err)
+			e = fmt.Errorf("uploadLinkFile() error: %v", err)
 		}
 	}()
 

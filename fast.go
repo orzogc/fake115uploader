@@ -49,7 +49,7 @@ type fastToken struct {
 func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint64) (body []byte, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("uploadSHA1() error: %w", err)
+			e = fmt.Errorf("uploadSHA1() error: %v", err)
 		}
 	}()
 
@@ -98,7 +98,7 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 func (file *fileInfo) uploadFileSHA1() (body []byte, fileSHA1 string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("uploadFileSHA1() error: %w", err)
+			e = fmt.Errorf("uploadFileSHA1() error: %v", err)
 		}
 	}()
 
@@ -118,7 +118,7 @@ func (file *fileInfo) uploadFileSHA1() (body []byte, fileSHA1 string, e error) {
 func (file *fileInfo) fastUploadFile() (token *fastToken, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("fastUploadFile() error: %w", err)
+			e = fmt.Errorf("fastUploadFile() error: %v", err)
 		}
 	}()
 

@@ -46,7 +46,7 @@ func (listener *multipartProgressListener) ProgressChanged(event *oss.ProgressEv
 func getBucket(bucketName string) (ot *ossToken, bucket *oss.Bucket, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("getBucket() error: %w", err)
+			e = fmt.Errorf("getBucket() error: %v", err)
 		}
 	}()
 
@@ -63,7 +63,7 @@ func getBucket(bucketName string) (ot *ossToken, bucket *oss.Bucket, e error) {
 func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("multipartUploadFile() error: %w", err)
+			e = fmt.Errorf("multipartUploadFile() error: %v", err)
 		}
 	}()
 

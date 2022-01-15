@@ -222,7 +222,7 @@ func getUserKey() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			log.Println("请确定网络是否畅通或者cookies是否设置好，每一次登陆网页端115都要重设一次cookies")
-			e = fmt.Errorf("getUserKey() error: %w", err)
+			e = fmt.Errorf("getUserKey() error: %v", err)
 		}
 	}()
 
@@ -256,7 +256,7 @@ func getUserKey() (e error) {
 func createDir(pid uint64, name string) (cid uint64, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("createDir() error: %w", err)
+			e = fmt.Errorf("createDir() error: %v", err)
 		}
 	}()
 
@@ -311,7 +311,7 @@ func createDir(pid uint64, name string) (cid uint64, e error) {
 func loadConfig() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("loadConfig() error: %w", err)
+			e = fmt.Errorf("loadConfig() error: %v", err)
 		}
 	}()
 
@@ -340,7 +340,7 @@ func loadConfig() (e error) {
 func initialize() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("initialize() error: %w", err)
+			e = fmt.Errorf("initialize() error: %v", err)
 		}
 	}()
 

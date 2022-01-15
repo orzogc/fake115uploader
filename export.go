@@ -21,7 +21,7 @@ import (
 func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("getBlockHash() error: %w", err)
+			e = fmt.Errorf("getBlockHash() error: %v", err)
 		}
 	}()
 
@@ -82,7 +82,7 @@ func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, 
 func exportHashLink() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			e = fmt.Errorf("exportHashLink() error: %w", err)
+			e = fmt.Errorf("exportHashLink() error: %v", err)
 		}
 	}()
 
