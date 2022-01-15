@@ -107,8 +107,9 @@ func exportHashLink() (e error) {
 	checkErr(err)
 	defer f.Close()
 
-	c, err := cipher.NewCipher()
+	key, err := cipher.NewKey()
 	checkErr(err)
+	c := cipher.NewCipher(key)
 	for _, file := range data {
 		filename := string(file.GetStringBytes("n"))
 		fileSize := file.GetUint64("s")

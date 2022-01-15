@@ -40,17 +40,15 @@ wlHF+mkTJpKd5Wacef0vV+xumqNorvLpIXWKwxNaoHM=
 -----END RSA PRIVATE KEY-----`
 )
 
-// Cipher 加密解密信息
-type Cipher struct {
+// Key 密钥
+type Key struct {
 	publicKey  *rsa.PublicKey
 	privateKey *rsa.PrivateKey
-	randKey    []byte
-	keyS       []byte
 }
 
-// NewCipher 新建Cipher
-func NewCipher() (*Cipher, error) {
-	c := new(Cipher)
+// NewKey 新建Key
+func NewKey() (*Key, error) {
+	k := new(Key)
 	block, _ := pem.Decode([]byte(publicKey))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
@@ -60,21 +58,36 @@ func NewCipher() (*Cipher, error) {
 	if !ok {
 		return nil, fmt.Errorf("public key is not a RSA public key: %+v", key)
 	}
-	c.publicKey = publicKey
+	k.publicKey = publicKey
 
 	block, _ = pem.Decode([]byte(privateKey))
 	privateKey, err := x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
-	c.privateKey = privateKey
+	k.privateKey = privateKey
 
-	return c, nil
+	return k, nil
+}
+
+// Cipher 加密解密信息
+type Cipher struct {
+	key     *Key
+	randKey []byte
+	keyS    []byte
+}
+
+// NewCipher 新建Cipher
+func NewCipher(key *Key) *Cipher {
+	c := new(Cipher)
+	c.key = key
+	c.randKey = make([]byte, keySize)
+
+	return c
 }
 
 // 生成key
 func (c *Cipher) genKey() error {
-	c.randKey = make([]byte, keySize)
 	_, err := rand.Read(c.randKey)
 	if err != nil {
 		return err
@@ -97,7 +110,7 @@ func (c *Cipher) Encrypt(plainText []byte) ([]byte, error) {
 	xorText := make([]byte, 0, len(c.randKey)+len(tmp))
 	xorText = append(xorText, c.randKey...)
 	xorText = append(xorText, xor(tmp, gKeyL)...)
-	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, c.publicKey, xorText)
+	cipherText, err := rsa.EncryptPKCS1v15(rand.Reader, c.key.publicKey, xorText)
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +131,7 @@ func (c *Cipher) Decrypt(cipherText []byte) ([]byte, error) {
 	blockCount := len(text) / blockSize
 	plainText := make([]byte, 0, blockCount*blockSize)
 	for i := 0; i < blockCount; i++ {
-		t, err := rsa.DecryptPKCS1v15(rand.Reader, c.privateKey, text[i*blockSize:(i+1)*blockSize])
+		t, err := rsa.DecryptPKCS1v15(rand.Reader, c.key.privateKey, text[i*blockSize:(i+1)*blockSize])
 		if err != nil {
 			return nil, err
 		}

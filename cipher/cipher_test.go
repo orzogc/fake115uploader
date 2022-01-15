@@ -69,10 +69,11 @@ func TestXor(t *testing.T) {
 func TestEncryptDecrypt(t *testing.T) {
 	t.Skip("Need pickcode and cookie")
 	const downURL = "http://proapi.115.com/app/chrome/downurl"
-	c, err := NewCipher()
+	key, err := NewKey()
 	if err != nil {
-		t.Errorf("create cipher error: %v", err)
+		t.Errorf("create key error: %v", err)
 	}
+	c := NewCipher(key)
 	text, err := c.Encrypt([]byte(fmt.Sprintf(`{"pickcode":"%s"}`, "needPickcode")))
 	if err != nil {
 		t.Errorf("encrypt error: %v", err)

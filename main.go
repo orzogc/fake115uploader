@@ -435,7 +435,7 @@ func initialize() (e error) {
 		info, err := os.Stat(*outputFile)
 		if !os.IsNotExist(err) {
 			if info.IsDir() {
-				log.Printf("%s 不能是文件夹", *hashFile)
+				log.Printf("%s 不能是文件夹", *outputFile)
 				os.Exit(1)
 			}
 		}
