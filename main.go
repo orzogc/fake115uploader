@@ -58,10 +58,7 @@ var (
 	internal        *bool
 	removeFile      *bool
 	forbidProxy     *bool
-	ossProxy        *string
-	retry           *uint
 	recursive       *bool
-	partsNum        *uint
 	verbose         *bool
 	userID          string
 	userKey         string
@@ -82,6 +79,9 @@ type uploadConfig struct {
 	Cookies   string `json:"cookies"`   // 115网页版的Cookie
 	CID       uint64 `json:"cid"`       // 115里文件夹的cid
 	ResultDir string `json:"resultDir"` // 在指定文件夹保存上传结果
+	HTTPRetry uint   `json:"httpRetry"` // HTTP请求失败后的重试次数
+	OSSProxy  string `json:"ossProxy"`  // OSS上传代理
+	PartsNum  uint   `json:"partsNum"`  // 断点续传的分片数量
 }
 
 // 上传结果数据
@@ -205,7 +205,7 @@ func exitPrint() {
 
 // 进行http请求
 func doRequest(req *http.Request) (resp *http.Response, err error) {
-	for i := 0; i < int(*retry+1); i++ {
+	for i := 0; i < int(config.HTTPRetry+1); i++ {
 		resp, err = httpClient.Do(req)
 		if err == nil {
 			return resp, nil
@@ -359,10 +359,10 @@ func initialize() (e error) {
 	internal = flag.Bool("a", false, "利用阿里云内网上传文件，需要在阿里云服务器上运行本程序")
 	removeFile = flag.Bool("e", false, "上传成功后自动删除原文件")
 	forbidProxy = flag.Bool("forbid-oss-proxy", false, "禁止使用代理上传OSS")
-	ossProxy = flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
-	retry = flag.Uint("retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
+	ossProxy := flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
+	httpRetry := flag.Uint("http-retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
 	recursive = flag.Bool("recursive", false, "递归上传文件夹")
-	partsNum = flag.Uint("parts-num", 0, "断点续传模式上传文件的`分片数量`，范围为1到10000")
+	partsNum := flag.Uint("parts-num", 0, "断点续传模式上传文件的`分片数量`，范围为1到10000，默认为0（即自动分片）")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
@@ -403,7 +403,11 @@ func initialize() (e error) {
 		log.Println("-parts-num参数只支持断点续传模式")
 		os.Exit(1)
 	}
-	if *partsNum > maxParts {
+	// 优先使用参数指定的分片数量
+	if *partsNum != 0 {
+		config.PartsNum = *partsNum
+	}
+	if config.PartsNum > maxParts {
 		log.Printf("分片数量不能大于%d", maxParts)
 		os.Exit(1)
 	}
@@ -471,6 +475,11 @@ func initialize() (e error) {
 		}
 	}
 
+	// 优先使用参数指定的HTTP请求重试次数
+	if *httpRetry != 0 {
+		config.HTTPRetry = *httpRetry
+	}
+
 	err := getUserKey()
 	checkErr(err)
 
@@ -486,14 +495,18 @@ func initialize() (e error) {
 
 	// oss代理
 	if !*forbidProxy {
-		// 优先级 ossProxy > http_proxy > https_proxy
+		// 优先级 ossProxy > http_proxy > https_proxy > 设置文件
 		*ossProxy = strings.TrimSpace(*ossProxy)
 		if *ossProxy == "" {
 			*ossProxy = strings.TrimSpace(os.Getenv("http_proxy"))
-			if *ossProxy == "" {
-				*ossProxy = strings.TrimSpace(os.Getenv("https_proxy"))
-			}
 		}
+		if *ossProxy == "" {
+			*ossProxy = strings.TrimSpace(os.Getenv("https_proxy"))
+		}
+		if *ossProxy == "" {
+			*ossProxy = config.OSSProxy
+		}
+
 		if *ossProxy != "" {
 			proxyURL, err := url.Parse(*ossProxy)
 			if err == nil {

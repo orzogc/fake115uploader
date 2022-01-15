@@ -114,8 +114,8 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 			return fmt.Errorf("%s 的大小超过115GB，取消上传", file)
 		}
 		// 是否指定分片数量
-		if *partsNum != 0 {
-			chunks, err = oss.SplitFileByPartNum(file, int(*partsNum))
+		if config.PartsNum != 0 {
+			chunks, err = oss.SplitFileByPartNum(file, int(config.PartsNum))
 			checkErr(err)
 		} else {
 			for i := int64(1); i < 10; i++ {

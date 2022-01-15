@@ -23,7 +23,7 @@
 
 `fake115uploader -u 文件` 先尝试用秒传模式上传文件，失败后改用普通模式上传。
 
-`fake115uploader -m 文件` 先尝试用秒传模式上传文件，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要超过数周）。可以用 `-parts-num 分片数量` 参数指定上传文件的分片数量，数量范围为1到10000。
+`fake115uploader -m 文件` 先尝试用秒传模式上传文件，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要超过数周）。可以设置fake115uploader.json的partsNum或者用 `-parts-num 分片数量` 参数指定上传文件的分片数量，数量范围为1到10000。
 
 `fake115uploader -b 保存文件 文件` 将文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）追加写入到指定的保存文件。
 
@@ -45,9 +45,9 @@
 
 上传文件时加上参数 `-e` ，上传成功后自动删除本地原文件。
 
-运行时加上参数 `-retry 重试次数` 设置HTTP请求失败后的重试次数，默认为0（即不重试）。
+设置fake115uploader.json的httpRetry或运行时加上参数 `-http-retry 重试次数` 设置HTTP请求失败后的重试次数，默认为0（即不重试）。
 
 运行时加上参数 `-v` 显示更详细的信息（调试用）。
 
 ### 代理设置
-`fake115uploader`的HTTP请求和OSS上传默认使用环境变量`http_proxy`和`https_proxy`的值作为代理，使用参数`-forbid-oss-proxy`禁止使用代理上传OSS，或者使用参数`-oss-proxy 代理`设置OSS上传代理。
+`fake115uploader`的HTTP请求和OSS上传默认使用环境变量`http_proxy`和`https_proxy`的值作为代理。可以使用参数`-forbid-oss-proxy`禁止使用代理上传OSS。可以设置fake115uploader.json的ossProxy或者使用参数`-oss-proxy 代理`设置OSS上传代理，代理格式和HTTP代理一致。
