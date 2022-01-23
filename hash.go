@@ -29,9 +29,9 @@ func hashSHA1(file string) (blockHash, totalHash string, e error) {
 
 	// 计算文件最前面一个区块的sha1 hash值
 	block := make([]byte, 128*1024)
-	_, err = f.Read(block)
+	n, err := f.Read(block)
 	checkErr(err)
-	data := sha1.Sum(block)
+	data := sha1.Sum(block[:n])
 	blockHash = strings.ToUpper(hex.EncodeToString(data[:]))
 	_, err = f.Seek(0, io.SeekStart)
 	checkErr(err)

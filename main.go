@@ -37,7 +37,7 @@ const (
 	orderURL      = "https://webapi.115.com/files/order"
 	createDirURL  = "https://webapi.115.com/files/add"
 	searchURL     = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
-	appVer        = "29.0.0"
+	appVer        = "29.2.0"
 	userAgent     = "Mozilla/5.0 115disk/" + appVer
 	endString     = "000000"
 	aliUserAgent  = "aliyun-sdk-android/2.9.1"
