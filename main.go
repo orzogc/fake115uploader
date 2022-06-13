@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -57,7 +58,6 @@ var (
 	saveDir         *string
 	internal        *bool
 	removeFile      *bool
-	forbidProxy     *bool
 	recursive       *bool
 	verbose         *bool
 	userID          string
@@ -71,7 +71,7 @@ var (
 	proxyHost       string
 	proxyUser       string
 	proxyPassword   string
-	httpClient      = &http.Client{}
+	httpClient      = &http.Client{Timeout: 30 * time.Second}
 )
 
 // 设置数据
@@ -80,6 +80,7 @@ type uploadConfig struct {
 	CID       uint64 `json:"cid"`       // 115里文件夹的cid
 	ResultDir string `json:"resultDir"` // 在指定文件夹保存上传结果
 	HTTPRetry uint   `json:"httpRetry"` // HTTP请求失败后的重试次数
+	HTTPProxy string `json:"httpProxy"` // HTTP代理
 	OSSProxy  string `json:"ossProxy"`  // OSS上传代理
 	PartsNum  uint   `json:"partsNum"`  // 断点续传的分片数量
 }
@@ -358,7 +359,7 @@ func initialize() (e error) {
 	noConfig := flag.Bool("n", false, "不读取设置文件，需要和 -k 配合使用")
 	internal = flag.Bool("a", false, "利用阿里云内网上传文件，需要在阿里云服务器上运行本程序")
 	removeFile = flag.Bool("e", false, "上传成功后自动删除原文件")
-	forbidProxy = flag.Bool("forbid-oss-proxy", false, "禁止使用代理上传OSS")
+	httpProxy := flag.String("http-proxy", "", "指定HTTP`代理`")
 	ossProxy := flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
 	httpRetry := flag.Uint("http-retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
 	recursive = flag.Bool("recursive", false, "递归上传文件夹")
@@ -493,31 +494,54 @@ func initialize() (e error) {
 		log.Printf("排序文件夹 %d 成功", config.CID)
 	}
 
-	// oss代理
-	if !*forbidProxy {
-		// 优先级 ossProxy > http_proxy > https_proxy > 设置文件
-		*ossProxy = strings.TrimSpace(*ossProxy)
-		if *ossProxy == "" {
-			*ossProxy = strings.TrimSpace(os.Getenv("http_proxy"))
+	// HTTP代理，优先级 httpProxy > 设置文件 > http_proxy/https_proxy
+	*httpProxy = strings.TrimSpace(*httpProxy)
+	if *httpProxy == "" {
+		*httpProxy = strings.TrimSpace(config.HTTPProxy)
+	}
+	if *httpProxy != "" {
+		proxyURL, err := url.Parse(*httpProxy)
+		if err == nil {
+			httpClient.Transport = &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+				DialContext: (&net.Dialer{
+					Timeout:   30 * time.Second,
+					KeepAlive: 30 * time.Second,
+				}).DialContext,
+				ForceAttemptHTTP2:     true,
+				MaxIdleConns:          100,
+				IdleConnTimeout:       90 * time.Second,
+				TLSHandshakeTimeout:   10 * time.Second,
+				ExpectContinueTimeout: 1 * time.Second,
+			}
+		} else {
+			log.Printf("解析HTTP代理地址出现错误：%v", err)
 		}
-		if *ossProxy == "" {
-			*ossProxy = strings.TrimSpace(os.Getenv("https_proxy"))
-		}
-		if *ossProxy == "" {
-			*ossProxy = config.OSSProxy
-		}
+	}
 
-		if *ossProxy != "" {
-			proxyURL, err := url.Parse(*ossProxy)
-			if err == nil {
-				proxyHost = "//" + proxyURL.Host
-				if proxyURL.User != nil {
-					proxyUser = proxyURL.User.Username()
-					if password, b := proxyURL.User.Password(); b {
-						proxyPassword = password
-					}
+	// OSS代理，优先级 ossProxy > 设置文件 > http_proxy > https_proxy
+	*ossProxy = strings.TrimSpace(*ossProxy)
+	if *ossProxy == "" {
+		*ossProxy = strings.TrimSpace(config.OSSProxy)
+	}
+	if *ossProxy == "" {
+		*ossProxy = strings.TrimSpace(os.Getenv("http_proxy"))
+	}
+	if *ossProxy == "" {
+		*ossProxy = strings.TrimSpace(os.Getenv("https_proxy"))
+	}
+	if *ossProxy != "" {
+		proxyURL, err := url.Parse(*ossProxy)
+		if err == nil {
+			proxyHost = "//" + proxyURL.Host
+			if proxyURL.User != nil {
+				proxyUser = proxyURL.User.Username()
+				if password, b := proxyURL.User.Password(); b {
+					proxyPassword = password
 				}
 			}
+		} else {
+			log.Printf("解析OSS代理地址出现错误：%v", err)
 		}
 	}
 

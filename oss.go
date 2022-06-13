@@ -152,7 +152,7 @@ func getOSSToken() (token *ossToken, e error) {
 
 // 获取oss客户端选项
 func getClientOptions() (options []oss.ClientOption) {
-	if !*forbidProxy && proxyHost != "" {
+	if proxyHost != "" {
 		if proxyUser != "" {
 			options = append(options, oss.AuthProxy(proxyHost, proxyUser, proxyPassword))
 		} else {

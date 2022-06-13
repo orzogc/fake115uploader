@@ -3,7 +3,7 @@
 
 ### 特点
 * 支持秒传模式，需要已经有人上传过指定文件到115
-* 支持上传超大文件，大小超过5GB的文件需要115 vip会员
+* 支持上传超大文件，上传大小超过5GB的文件需要115 vip会员
 * 支持断点续传（适合用于上传超大文件）
 * 支持显示上传进度条
 
@@ -21,7 +21,7 @@
 
 `fake115uploader -f 文件` 秒传模式上传文件，可以指定多个文件且文件必须是最后一个参数，下同。
 
-`fake115uploader -u 文件` 先尝试用秒传模式上传文件，失败后改用普通模式上传。
+`fake115uploader -u 文件` 先尝试用秒传模式上传文件，失败后改用普通模式上传，不支持上传超过5GB的文件。
 
 `fake115uploader -m 文件` 先尝试用秒传模式上传文件，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要超过数周）。可以设置fake115uploader.json的partsNum或者用 `-parts-num 分片数量` 参数指定上传文件的分片数量，数量范围为1到10000。
 
@@ -50,4 +50,8 @@
 运行时加上参数 `-v` 显示更详细的信息（调试用）。
 
 ### 代理设置
-`fake115uploader`的HTTP请求和OSS上传默认使用环境变量`http_proxy`和`https_proxy`的值作为代理。可以使用参数`-forbid-oss-proxy`禁止使用代理上传OSS。可以设置fake115uploader.json的ossProxy或者使用参数`-oss-proxy 代理`设置OSS上传代理，代理格式和HTTP代理一致。
+`fake115uploader`的HTTP请求和OSS上传默认使用环境变量`http_proxy`和`https_proxy`的值作为代理。
+
+可以设置fake115uploader.json的httpProxy或者使用参数`-http-proxy 代理`设置HTTP代理，支持SOCKS5代理。
+
+可以设置fake115uploader.json的ossProxy或者使用参数`-oss-proxy 代理`设置OSS上传代理，代理格式和HTTP代理一致，不支持SOCKS5代理。
