@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -72,7 +71,7 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 	// 存档文件保存在设置文件所在文件夹内
 	saveFile := filepath.Join(*saveDir, filepath.Base(file)+".json")
 	if sp != nil {
-		data, err := ioutil.ReadFile(saveFile)
+		data, err := os.ReadFile(saveFile)
 		checkErr(err)
 		err = json.Unmarshal(data, sp)
 		checkErr(err)
@@ -170,7 +169,7 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 			sp = &saveProgress{FastToken: ft, Chunks: chunks, Imur: imur, Parts: parts}
 			data, err := json.Marshal(*sp)
 			checkErr(err)
-			err = ioutil.WriteFile(saveFile, data, 0644)
+			err = os.WriteFile(saveFile, data, 0644)
 			checkErr(err)
 			result.Saved = append(result.Saved, file)
 			multipartCh <- struct{}{}
@@ -208,7 +207,7 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 				sp = &saveProgress{FastToken: ft, Chunks: chunks, Imur: imur, Parts: parts}
 				data, err := json.Marshal(*sp)
 				checkErr(err)
-				err = ioutil.WriteFile(saveFile, data, 0644)
+				err = os.WriteFile(saveFile, data, 0644)
 				checkErr(err)
 				result.Saved = append(result.Saved, file)
 				return errStopUpload

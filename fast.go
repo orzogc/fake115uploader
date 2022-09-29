@@ -1,17 +1,20 @@
 package main
 
 import (
+	"bytes"
+	"crypto/md5"
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/valyala/fastjson"
 )
@@ -53,34 +56,46 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 		}
 	}()
 
-	preID := blockHash
+	preID := strings.ToUpper(blockHash)
 	fileID := strings.ToUpper(totalHash)
-	quickID := fileID
 	target := targetPrefix + strconv.FormatUint(targetCID, 10)
-	data := sha1.Sum([]byte(userID + fileID + quickID + target + "0"))
+	data := sha1.Sum([]byte(userID + fileID + target + "0"))
 	hash := hex.EncodeToString(data[:])
 	sigStr := userKey + hash + endString
 	data = sha1.Sum([]byte(sigStr))
 	sig := strings.ToUpper(hex.EncodeToString(data[:]))
-	uploadURL := fmt.Sprintf(initURL, appVer, sig)
+
+	t := time.Now().Unix()
+
+	userIdMd5 := md5.Sum([]byte(userID))
+	tokenMd5 := md5.Sum([]byte(fileID + fileSize + preID + userID + fmt.Sprintf("%d", t) + hex.EncodeToString(userIdMd5[:])))
+	token := hex.EncodeToString(tokenMd5[:])
+
+	encodedToken, err := ecdhCipher.EncodeToken(t)
+	checkErr(err)
+
+	uploadURL := fmt.Sprintf(initURL, sig, t, encodedToken, token)
+	//uploadURL := fmt.Sprintf(initURL, t, token, appVer, sig, encodedToken)
 
 	if *verbose {
+		log.Printf("initupload的链接是：%s", uploadURL)
 		log.Printf("sig的值是：%s", sig)
+		log.Printf("k_ec的值是：%s", encodedToken)
 	}
 
 	form := url.Values{}
+	form.Set("api_version", "2.0.0.0")
 	form.Set("preid", preID)
 	form.Set("filename", filename)
-	form.Set("quickid", quickID)
-	form.Set("user_id", userID)
-	form.Set("app_ver", appVer)
 	form.Set("filesize", fileSize)
 	form.Set("userid", userID)
-	form.Set("exif", "")
 	form.Set("target", target)
 	form.Set("fileid", fileID)
 
-	req, err := http.NewRequest(http.MethodPost, uploadURL, strings.NewReader(form.Encode()))
+	encrypted, err := ecdhCipher.Encrypt([]byte(form.Encode()))
+	checkErr(err)
+
+	req, err := http.NewRequest(http.MethodPost, uploadURL, bytes.NewReader(encrypted))
 	checkErr(err)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("User-Agent", userAgent)
@@ -88,7 +103,9 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	resp, err := doRequest(req)
 	checkErr(err)
 	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
+	checkErr(err)
+	body, err = ecdhCipher.Decrypt(body)
 	checkErr(err)
 
 	return body, nil

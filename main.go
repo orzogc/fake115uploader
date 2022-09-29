@@ -6,8 +6,8 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"io/fs"
-	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
@@ -21,30 +21,32 @@ import (
 	"time"
 
 	"github.com/eiannone/keyboard"
+	"github.com/orzogc/fake115uploader/cipher"
 	"github.com/valyala/fastjson"
 )
 
 // const tokenURL = "https://uplb.115.com/3.0/gettoken.php"
 // const resumeURL = "https://uplb.115.com/3.0/resumeupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
 // downloadURL   = "https://webapi.115.com/files/download?pickcode=%s"
+// sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
 
 const (
-	infoURL       = "https://proapi.115.com/app/uploadinfo"
-	sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
-	initURL       = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&appversion=%s&format=json&sig=%s"
-	getinfoURL    = "https://uplb.115.com/3.0/getuploadinfo.php"
-	listFileURL   = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
-	downloadURL   = "https://proapi.115.com/app/chrome/downurl"
-	orderURL      = "https://webapi.115.com/files/order"
-	createDirURL  = "https://webapi.115.com/files/add"
-	searchURL     = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
-	appVer        = "29.2.0"
-	userAgent     = "Mozilla/5.0 115disk/" + appVer
-	endString     = "000000"
-	aliUserAgent  = "aliyun-sdk-android/2.9.1"
-	linkPrefix    = "115://"
-	targetPrefix  = "U_1_"
-	maxParts      = 10000
+	infoURL = "https://proapi.115.com/app/uploadinfo"
+	//initURL      = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&t=%d&token=%s&appversion=%s&format=json&sig=%s&k_ec=%s"
+	initURL      = "https://uplb.115.com/3.0/initupload.php?appid=0&appfrom=12&appversion=2.0.0.0&format=json&isp=0&sig=%s&t=%d&topupload=0&rt=0&k_ec=%s&token=%s"
+	getinfoURL   = "https://uplb.115.com/3.0/getuploadinfo.php"
+	listFileURL  = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
+	downloadURL  = "https://proapi.115.com/app/chrome/downurl"
+	orderURL     = "https://webapi.115.com/files/order"
+	createDirURL = "https://webapi.115.com/files/add"
+	searchURL    = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
+	appVer       = "2.0.0.0"
+	userAgent    = "Mozilla/5.0 115disk/" + appVer
+	endString    = "000000"
+	aliUserAgent = "aliyun-sdk-android/2.9.1"
+	linkPrefix   = "115://"
+	targetPrefix = "U_1_"
+	maxParts     = 10000
 )
 
 var (
@@ -72,6 +74,7 @@ var (
 	proxyUser       string
 	proxyPassword   string
 	httpClient      = &http.Client{Timeout: 30 * time.Second}
+	ecdhCipher      *cipher.EcdhCipher
 )
 
 // 设置数据
@@ -186,7 +189,7 @@ func exitPrint() {
 		log.Printf("上传结果保存在 %s", resultFile)
 		data, err := json.MarshalIndent(result, "", "    ")
 		checkErr(err)
-		err = ioutil.WriteFile(resultFile, data, 0644)
+		err = os.WriteFile(resultFile, data, 0644)
 		checkErr(err)
 	}
 
@@ -234,7 +237,7 @@ func getUserKey() (e error) {
 	resp, err := doRequest(req)
 	checkErr(err)
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	checkErr(err)
 
 	var p fastjson.Parser
@@ -320,11 +323,11 @@ func loadConfig() (e error) {
 		log.Printf("设置文件不存在，新建设置文件 %s ，请先设置cookies", *configFile)
 		data, err := json.MarshalIndent(config, "", "    ")
 		checkErr(err)
-		err = ioutil.WriteFile(*configFile, data, 0644)
+		err = os.WriteFile(*configFile, data, 0644)
 		checkErr(err)
 		os.Exit(1)
 	} else {
-		data, err := ioutil.ReadFile(*configFile)
+		data, err := os.ReadFile(*configFile)
 		checkErr(err)
 		if json.Valid(data) {
 			err = json.Unmarshal(data, &config)
@@ -544,6 +547,9 @@ func initialize() (e error) {
 			log.Printf("解析OSS代理地址出现错误：%v", err)
 		}
 	}
+
+	ecdhCipher, err = cipher.NewEcdhCipher()
+	checkErr(err)
 
 	return nil
 }

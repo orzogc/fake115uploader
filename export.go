@@ -4,7 +4,7 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -18,7 +18,7 @@ import (
 )
 
 // 根据pickcode获取blockhash
-func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, e error) {
+func getBlockHash(c *cipher.RsaCipher, pickCode, fileID string) (blockHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("getBlockHash() error: %v", err)
@@ -38,7 +38,7 @@ func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, 
 	checkErr(err)
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	checkErr(err)
 	if *verbose {
 		log.Printf("获取下载地址的响应为 %s", string(body))
@@ -70,7 +70,7 @@ func getBlockHash(c *cipher.Cipher, pickCode, fileID string) (blockHash string, 
 	resp, err = doRequest(req)
 	checkErr(err)
 	defer resp.Body.Close()
-	body, err = ioutil.ReadAll(resp.Body)
+	body, err = io.ReadAll(resp.Body)
 	checkErr(err)
 	data := sha1.Sum(body)
 	blockHash = hex.EncodeToString(data[:])
@@ -107,9 +107,9 @@ func exportHashLink() (e error) {
 	checkErr(err)
 	defer f.Close()
 
-	key, err := cipher.NewKey()
+	key, err := cipher.NewRsaKey()
 	checkErr(err)
-	c := cipher.NewCipher(key)
+	c := cipher.NewRsaCipher(key)
 	for _, file := range data {
 		filename := string(file.GetStringBytes("n"))
 		fileSize := file.GetUint64("s")

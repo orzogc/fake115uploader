@@ -6,7 +6,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -16,7 +16,7 @@ import (
 )
 
 func TestParseKey(t *testing.T) {
-	block, _ := pem.Decode([]byte(publicKey))
+	block, _ := pem.Decode([]byte(publicRsaKey))
 	key, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		t.Errorf("public key parsing error: %v", err)
@@ -25,7 +25,7 @@ func TestParseKey(t *testing.T) {
 		t.Errorf("public key is not a RSA public key: %+v", key)
 	}
 
-	block, _ = pem.Decode([]byte(privateKey))
+	block, _ = pem.Decode([]byte(privateRsaKey))
 	_, err = x509.ParsePKCS1PrivateKey(block.Bytes)
 	if err != nil {
 		t.Errorf("private key parsing error: %v", err)
@@ -69,11 +69,11 @@ func TestXor(t *testing.T) {
 func TestEncryptDecrypt(t *testing.T) {
 	t.Skip("Need pickcode and cookie")
 	const downURL = "http://proapi.115.com/app/chrome/downurl"
-	key, err := NewKey()
+	key, err := NewRsaKey()
 	if err != nil {
 		t.Errorf("create key error: %v", err)
 	}
-	c := NewCipher(key)
+	c := NewRsaCipher(key)
 	text, err := c.Encrypt([]byte(fmt.Sprintf(`{"pickcode":"%s"}`, "needPickcode")))
 	if err != nil {
 		t.Errorf("encrypt error: %v", err)
@@ -95,7 +95,7 @@ func TestEncryptDecrypt(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	t.Logf("%+v", resp.Header)
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		t.Errorf("read response body error: %v", err)
 	}
