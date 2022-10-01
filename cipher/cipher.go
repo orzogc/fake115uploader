@@ -271,7 +271,13 @@ func (c *EcdhCipher) Encrypt(plainText []byte) ([]byte, error) {
 	return cipherText, nil
 }
 
-func (c *EcdhCipher) Decrypt(cipherText []byte) ([]byte, error) {
+func (c *EcdhCipher) Decrypt(cipherText []byte) (text []byte, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("%v", err)
+		}
+	}()
+
 	cipherText = cipherText[0 : len(cipherText)-len(cipherText)%aes.BlockSize]
 
 	block, err := aes.NewCipher(c.key)
@@ -284,8 +290,7 @@ func (c *EcdhCipher) Decrypt(cipherText []byte) ([]byte, error) {
 	mode.CryptBlocks(lz4Block, cipherText)
 
 	length := int(lz4Block[0]) + int(lz4Block[1])<<8
-	maxLength := lz4.CompressBlockBound(length)
-	text := make([]byte, maxLength)
+	text = make([]byte, 0x2000)
 	l, err := lz4.UncompressBlock(lz4Block[2:length+2], text)
 	if err != nil {
 		return nil, err
@@ -337,13 +342,3 @@ func (c *EcdhCipher) EncodeToken(timestamp int64) (string, error) {
 
 	return base64.StdEncoding.EncodeToString(tmp), nil
 }
-
-/* func padding(data []byte) []byte {
-n := aes.BlockSize - len(data)%aes.BlockSize
-pad := make([]byte, n)
-/* for i := range pad {
-	pad[i] = byte(n)
-} */
-
-/* return append(data, pad...)
-}  */

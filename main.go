@@ -31,16 +31,15 @@ import (
 // sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
 
 const (
-	infoURL = "https://proapi.115.com/app/uploadinfo"
-	//initURL      = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&t=%d&token=%s&appversion=%s&format=json&sig=%s&k_ec=%s"
-	initURL      = "https://uplb.115.com/3.0/initupload.php?appid=0&appfrom=12&appversion=2.0.0.0&format=json&isp=0&sig=%s&t=%d&topupload=0&rt=0&k_ec=%s&token=%s"
+	infoURL      = "https://proapi.115.com/app/uploadinfo"
+	initURL      = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&t=%d&token=%s&appversion=%s&format=json&sig=%s&k_ec=%s"
 	getinfoURL   = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL  = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
 	downloadURL  = "https://proapi.115.com/app/chrome/downurl"
 	orderURL     = "https://webapi.115.com/files/order"
 	createDirURL = "https://webapi.115.com/files/add"
 	searchURL    = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
-	appVer       = "2.0.0.0"
+	appVer       = "30.1.0"
 	userAgent    = "Mozilla/5.0 115disk/" + appVer
 	endString    = "000000"
 	aliUserAgent = "aliyun-sdk-android/2.9.1"

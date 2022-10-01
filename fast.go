@@ -48,6 +48,8 @@ type fastToken struct {
 	SHA1       string   // 文件的sha1 hash值
 }
 
+var pre = []byte{0x51, 0x63, 0x6c, 0x6d, 0x38, 0x4d, 0x47, 0x57, 0x55, 0x76, 0x35, 0x39, 0x54, 0x6e, 0x72, 0x52, 0x30, 0x58, 0x50, 0x67}
+
 // 上传SHA1的值到115
 func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint64) (body []byte, e error) {
 	defer func() {
@@ -58,8 +60,9 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 
 	preID := strings.ToUpper(blockHash)
 	fileID := strings.ToUpper(totalHash)
+	quickID := fileID
 	target := targetPrefix + strconv.FormatUint(targetCID, 10)
-	data := sha1.Sum([]byte(userID + fileID + target + "0"))
+	data := sha1.Sum([]byte(userID + fileID + quickID + target + "0"))
 	hash := hex.EncodeToString(data[:])
 	sigStr := userKey + hash + endString
 	data = sha1.Sum([]byte(sigStr))
@@ -68,14 +71,13 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	t := time.Now().Unix()
 
 	userIdMd5 := md5.Sum([]byte(userID))
-	tokenMd5 := md5.Sum([]byte(fileID + fileSize + preID + userID + fmt.Sprintf("%d", t) + hex.EncodeToString(userIdMd5[:])))
+	tokenMd5 := md5.Sum(append(pre, []byte(fileID+fileSize+preID+userID+strconv.FormatInt(t, 10)+hex.EncodeToString(userIdMd5[:])+appVer)...))
 	token := hex.EncodeToString(tokenMd5[:])
 
 	encodedToken, err := ecdhCipher.EncodeToken(t)
 	checkErr(err)
 
-	uploadURL := fmt.Sprintf(initURL, sig, t, encodedToken, token)
-	//uploadURL := fmt.Sprintf(initURL, t, token, appVer, sig, encodedToken)
+	uploadURL := fmt.Sprintf(initURL, t, token, appVer, sig, encodedToken)
 
 	if *verbose {
 		log.Printf("initupload的链接是：%s", uploadURL)
@@ -84,11 +86,14 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	}
 
 	form := url.Values{}
-	form.Set("api_version", "2.0.0.0")
 	form.Set("preid", preID)
 	form.Set("filename", filename)
+	form.Set("quickid", quickID)
+	form.Set("user_id", userID)
+	form.Set("app_ver", appVer)
 	form.Set("filesize", fileSize)
 	form.Set("userid", userID)
+	form.Set("exif", "")
 	form.Set("target", target)
 	form.Set("fileid", fileID)
 
@@ -105,10 +110,16 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	defer resp.Body.Close()
 	body, err = io.ReadAll(resp.Body)
 	checkErr(err)
-	body, err = ecdhCipher.Decrypt(body)
-	checkErr(err)
+	decrypted, err := ecdhCipher.Decrypt(body)
+	if err != nil {
+		if *verbose {
+			log.Printf("解密响应体出现错误：%v", err)
+		}
 
-	return body, nil
+		return body, nil
+	}
+
+	return decrypted, nil
 }
 
 // 利用文件的sha1 hash值上传文件获取响应
@@ -165,7 +176,7 @@ func (file *fileInfo) fastUploadFile() (token *fastToken, e error) {
 		checkErr(err)
 
 		if *verbose {
-			log.Printf("秒传模式上传 %s 失败的响应的json内容是：\n%+v", file.Path, token)
+			log.Printf("秒传模式上传 %s 失败返回的内容是：\n%+v", file.Path, token)
 		}
 
 		return token, fmt.Errorf("秒传模式上传 %s 失败", file.Path)
