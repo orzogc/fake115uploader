@@ -48,7 +48,7 @@ type fastToken struct {
 	SHA1       string   // 文件的sha1 hash值
 }
 
-var pre = []byte{0x51, 0x63, 0x6c, 0x6d, 0x38, 0x4d, 0x47, 0x57, 0x55, 0x76, 0x35, 0x39, 0x54, 0x6e, 0x72, 0x52, 0x30, 0x58, 0x50, 0x67}
+const md5Salt = "Qclm8MGWUv59TnrR0XPg"
 
 // 上传SHA1的值到115
 func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint64) (body []byte, e error) {
@@ -71,7 +71,7 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	t := time.Now().Unix()
 
 	userIdMd5 := md5.Sum([]byte(userID))
-	tokenMd5 := md5.Sum(append(pre, []byte(fileID+fileSize+preID+userID+strconv.FormatInt(t, 10)+hex.EncodeToString(userIdMd5[:])+appVer)...))
+	tokenMd5 := md5.Sum([]byte(md5Salt + fileID + fileSize + preID + userID + strconv.FormatInt(t, 10) + hex.EncodeToString(userIdMd5[:]) + appVer))
 	token := hex.EncodeToString(tokenMd5[:])
 
 	encodedToken, err := ecdhCipher.EncodeToken(t)
