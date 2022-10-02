@@ -149,7 +149,7 @@ func (c *RsaCipher) Decrypt(cipherText []byte) ([]byte, error) {
 		n := big.NewInt(0).SetBytes(text[i*rsaBlockSize : (i+1)*rsaBlockSize])
 		m := big.NewInt(0).Exp(n, big.NewInt(int64(c.key.publicKey.E)), c.key.publicKey.N)
 		b := m.Bytes()
-		index := bytes.IndexByte(b, '\x00')
+		index := bytes.IndexByte(b, 0x00)
 		if index < 0 {
 			return nil, fmt.Errorf("解密失败，找不到解密后的文本")
 		}

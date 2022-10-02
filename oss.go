@@ -64,6 +64,7 @@ func getURLJSON(url string) (v *fastjson.Value, e error) {
 	var p fastjson.Parser
 	v, err = p.ParseBytes(body)
 	checkErr(err)
+
 	return v, nil
 }
 

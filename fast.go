@@ -82,6 +82,7 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	if *verbose {
 		log.Printf("initupload的链接是：%s", uploadURL)
 		log.Printf("sig的值是：%s", sig)
+		log.Printf("token的值是：%s", token)
 		log.Printf("k_ec的值是：%s", encodedToken)
 	}
 

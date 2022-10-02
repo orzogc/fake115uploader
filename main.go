@@ -575,10 +575,12 @@ func main() {
 	files := make([]fileInfo, 0, len(flag.Args()))
 	cidMap := make(map[string]uint64)
 	for _, file := range flag.Args() {
+		file = filepath.Clean(file)
 		info, err := os.Stat(file)
 		if err != nil {
 			log.Printf("获取 %s 的信息出现错误：%v", file, err)
 		}
+
 		if info.IsDir() {
 			// 上传文件夹
 			if *recursive {
@@ -586,11 +588,15 @@ func main() {
 					if d == nil {
 						return fmt.Errorf("获取文件夹 %s 的信息出现错误，取消上传该文件夹：%w", path, err)
 					}
+
+					path = filepath.Clean(path)
+
 					if d.IsDir() {
 						if err != nil {
 							log.Printf("获取文件夹 %s 的信息出现错误，取消上传该文件夹：%v", path, err)
 							return fs.SkipDir
 						}
+
 						if path == file {
 							var filename string
 							if path == "." {
@@ -602,19 +608,25 @@ func main() {
 							} else {
 								filename = filepath.Base(path)
 							}
+
 							cid, err := createDir(config.CID, filename)
 							if err != nil {
 								return err
 							}
+
 							cidMap[path] = cid
+
 							return nil
 						}
+
 						pdir := filepath.Dir(path)
 						if pid, ok := cidMap[pdir]; ok {
 							cid, err := createDir(pid, d.Name())
+
 							if err != nil {
 								return err
 							}
+
 							cidMap[path] = cid
 						} else {
 							return fmt.Errorf("没有创建文件夹 %s ，取消上传 %s", filepath.Base(pdir), path)
@@ -624,6 +636,7 @@ func main() {
 							log.Printf("获取文件 %s 的信息出现错误，取消上传该文件：%v", path, err)
 							return nil
 						}
+
 						pdir := filepath.Dir(path)
 						if pid, ok := cidMap[pdir]; ok {
 							files = append(files, fileInfo{
