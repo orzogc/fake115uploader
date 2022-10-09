@@ -486,16 +486,6 @@ func initialize() (e error) {
 	err := getUserKey()
 	checkErr(err)
 
-	// 将cid对应文件夹设置为时间降序
-	orderBody := fmt.Sprintf("user_order=user_ptime&file_id=%d&user_asc=0&fc_mix=0", config.CID)
-	v, err := postFormJSON(orderURL, orderBody)
-	checkErr(err)
-	if !v.GetBool("state") {
-		panic(fmt.Sprintf("排序文件夹 %d 出现错误：%v", config.CID, v.GetStringBytes("error")))
-	} else if *verbose {
-		log.Printf("排序文件夹 %d 成功", config.CID)
-	}
-
 	// HTTP代理，优先级 httpProxy > 设置文件 > http_proxy/https_proxy
 	*httpProxy = strings.TrimSpace(*httpProxy)
 	if *httpProxy == "" {
@@ -545,6 +535,16 @@ func initialize() (e error) {
 		} else {
 			log.Printf("解析OSS代理地址出现错误：%v", err)
 		}
+	}
+
+	// 将cid对应文件夹设置为时间降序
+	orderBody := fmt.Sprintf("user_order=user_ptime&file_id=%d&user_asc=0&fc_mix=0", config.CID)
+	v, err := postFormJSON(orderURL, orderBody)
+	checkErr(err)
+	if !v.GetBool("state") {
+		panic(fmt.Sprintf("排序文件夹 %d 出现错误：%v", config.CID, v.GetStringBytes("error")))
+	} else if *verbose {
+		log.Printf("排序文件夹 %d 成功", config.CID)
 	}
 
 	ecdhCipher, err = cipher.NewEcdhCipher()
