@@ -58,11 +58,9 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 		}
 	}()
 
-	preID := strings.ToUpper(blockHash)
 	fileID := strings.ToUpper(totalHash)
-	quickID := fileID
 	target := targetPrefix + strconv.FormatUint(targetCID, 10)
-	data := sha1.Sum([]byte(userID + fileID + quickID + target + "0"))
+	data := sha1.Sum([]byte(userID + fileID + target + "0"))
 	hash := hex.EncodeToString(data[:])
 	sigStr := userKey + hash + endString
 	data = sha1.Sum([]byte(sigStr))
@@ -71,13 +69,13 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	t := time.Now().Unix()
 
 	userIdMd5 := md5.Sum([]byte(userID))
-	tokenMd5 := md5.Sum([]byte(md5Salt + fileID + fileSize + preID + userID + strconv.FormatInt(t, 10) + hex.EncodeToString(userIdMd5[:]) + appVer))
+	tokenMd5 := md5.Sum([]byte(md5Salt + fileID + fileSize + userID + strconv.FormatInt(t, 10) + hex.EncodeToString(userIdMd5[:]) + appVer))
 	token := hex.EncodeToString(tokenMd5[:])
 
 	encodedToken, err := ecdhCipher.EncodeToken(t)
 	checkErr(err)
 
-	uploadURL := fmt.Sprintf(initURL, t, token, appVer, sig, encodedToken)
+	uploadURL := fmt.Sprintf(initURL, encodedToken)
 
 	if *verbose {
 		log.Printf("initupload的链接是：%s", uploadURL)
@@ -87,16 +85,16 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	}
 
 	form := url.Values{}
-	form.Set("preid", preID)
-	form.Set("filename", filename)
-	form.Set("quickid", quickID)
-	form.Set("user_id", userID)
-	form.Set("app_ver", appVer)
-	form.Set("filesize", fileSize)
+	form.Set("appid", "0")
+	form.Set("appversion", appVer)
 	form.Set("userid", userID)
-	form.Set("exif", "")
-	form.Set("target", target)
+	form.Set("filename", filename)
+	form.Set("filesize", fileSize)
 	form.Set("fileid", fileID)
+	form.Set("target", target)
+	form.Set("sig", sig)
+	form.Set("t", strconv.FormatInt(t, 10))
+	form.Set("token", token)
 
 	encrypted, err := ecdhCipher.Encrypt([]byte(form.Encode()))
 	checkErr(err)

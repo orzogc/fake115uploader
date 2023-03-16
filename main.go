@@ -32,14 +32,14 @@ import (
 
 const (
 	infoURL      = "https://proapi.115.com/app/uploadinfo"
-	initURL      = "https://uplb.115.com/3.0/initupload.php?isp=0&appid=0&t=%d&token=%s&appversion=%s&format=json&sig=%s&k_ec=%s"
+	initURL      = "https://uplb.115.com/4.0/initupload.php?k_ec=%s"
 	getinfoURL   = "https://uplb.115.com/3.0/getuploadinfo.php"
 	listFileURL  = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
 	downloadURL  = "https://proapi.115.com/app/chrome/downurl"
 	orderURL     = "https://webapi.115.com/files/order"
 	createDirURL = "https://webapi.115.com/files/add"
 	searchURL    = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
-	appVer       = "30.1.0"
+	appVer       = "30.5.1"
 	userAgent    = "Mozilla/5.0 115disk/" + appVer
 	endString    = "000000"
 	aliUserAgent = "aliyun-sdk-android/2.9.1"
@@ -537,7 +537,7 @@ func initialize() (e error) {
 		}
 	}
 
-	if len(flag.Args()) != 0 && (*fastUpload || *upload || *multipartUpload) {
+	if len(flag.Args()) != 0 && (*upload || *multipartUpload) {
 		// 将cid对应文件夹设置为时间降序
 		orderBody := fmt.Sprintf("user_order=user_ptime&file_id=%d&user_asc=0&fc_mix=0", config.CID)
 		v, err := postFormJSON(orderURL, orderBody)
