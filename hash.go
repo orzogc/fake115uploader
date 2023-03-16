@@ -15,17 +15,37 @@ import (
 	"github.com/valyala/fastjson"
 )
 
+// 计算文件指定范围内的sha1值
+func hashFileRange(f *os.File, signCheck string) (rangeHash string, e error) {
+	defer func() {
+		if err := recover(); err != nil {
+			e = fmt.Errorf("hashFileRange() error: %v", err)
+		}
+	}()
+
+	var start, end int64
+	_, err := fmt.Sscanf(signCheck, "%d-%d", &start, &end)
+	checkErr(err)
+	if start < 0 || end < 0 || end < start {
+		return "", fmt.Errorf("sign_check范围错误：%s", signCheck)
+	}
+
+	_, err = f.Seek(start, io.SeekStart)
+	checkErr(err)
+	h := sha1.New()
+	_, err = io.CopyN(h, f, end-start+1)
+	checkErr(err)
+
+	return strings.ToUpper(hex.EncodeToString(h.Sum(nil))), nil
+}
+
 // 计算文件的sha1值
-func hashSHA1(file string) (blockHash, totalHash string, e error) {
+func hashSHA1(f *os.File) (blockHash, totalHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("hashSHA1() error: %v", err)
 		}
 	}()
-
-	f, err := os.Open(file)
-	checkErr(err)
-	defer f.Close()
 
 	// 计算文件最前面一个区块的sha1 hash值
 	block := make([]byte, 128*1024)
@@ -53,7 +73,11 @@ func hash115Link(file string) (hashLink string, e error) {
 		}
 	}()
 
-	blockHash, totalHash, err := hashSHA1(file)
+	f, err := os.Open(file)
+	checkErr(err)
+	defer f.Close()
+
+	blockHash, totalHash, err := hashSHA1(f)
 	checkErr(err)
 	info, err := os.Stat(file)
 	checkErr(err)
@@ -108,8 +132,12 @@ func upload115Link(hashLink string) (e error) {
 		panic(fmt.Errorf("%s 不符合115 hashlink的格式", hashLink))
 	}
 
-	body, err := uploadSHA1(link[0], link[1], link[2], link[3], config.CID)
+	body, err := uploadSHA1(link[0], link[1], link[2], "", "", config.CID)
 	checkErr(err)
+
+	if *verbose {
+		log.Printf("秒传模式上传响应体的内容是：\n%s", string(body))
+	}
 
 	var p fastjson.Parser
 	v, err := p.ParseBytes(body)

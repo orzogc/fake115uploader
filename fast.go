@@ -51,7 +51,7 @@ type fastToken struct {
 const md5Salt = "Qclm8MGWUv59TnrR0XPg"
 
 // 上传SHA1的值到115
-func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint64) (body []byte, e error) {
+func uploadSHA1(filename, fileSize, totalHash, signKey, signVal string, targetCID uint64) (body []byte, e error) {
 	defer func() {
 		if err := recover(); err != nil {
 			e = fmt.Errorf("uploadSHA1() error: %v", err)
@@ -69,7 +69,7 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	t := time.Now().Unix()
 
 	userIdMd5 := md5.Sum([]byte(userID))
-	tokenMd5 := md5.Sum([]byte(md5Salt + fileID + fileSize + userID + strconv.FormatInt(t, 10) + hex.EncodeToString(userIdMd5[:]) + appVer))
+	tokenMd5 := md5.Sum([]byte(md5Salt + fileID + fileSize + signKey + signVal + userID + strconv.FormatInt(t, 10) + hex.EncodeToString(userIdMd5[:]) + appVer))
 	token := hex.EncodeToString(tokenMd5[:])
 
 	encodedToken, err := ecdhCipher.EncodeToken(t)
@@ -95,6 +95,10 @@ func uploadSHA1(filename, fileSize, totalHash, blockHash string, targetCID uint6
 	form.Set("sig", sig)
 	form.Set("t", strconv.FormatInt(t, 10))
 	form.Set("token", token)
+	if signKey != "" && signVal != "" {
+		form.Set("sign_key", signKey)
+		form.Set("sign_val", signVal)
+	}
 
 	encrypted, err := ecdhCipher.Encrypt([]byte(form.Encode()))
 	checkErr(err)
@@ -129,14 +133,34 @@ func (file *fileInfo) uploadFileSHA1() (body []byte, fileSHA1 string, e error) {
 		}
 	}()
 
-	blockHash, totalHash, err := hashSHA1(file.Path)
+	f, err := os.Open(file.Path)
+	checkErr(err)
+	defer f.Close()
+
+	_, totalHash, err := hashSHA1(f)
 	checkErr(err)
 
 	info, err := os.Stat(file.Path)
 	checkErr(err)
+	filename := info.Name()
+	fileSize := strconv.FormatInt(info.Size(), 10)
+	targetCID := file.ParentID
 
-	body, err = uploadSHA1(info.Name(), strconv.FormatInt(info.Size(), 10), totalHash, blockHash, file.ParentID)
+	body, err = uploadSHA1(filename, fileSize, totalHash, "", "", targetCID)
 	checkErr(err)
+
+	var p fastjson.Parser
+	v, err := p.ParseBytes(body)
+	checkErr(err)
+	if v.GetInt("status") == 7 && v.GetInt("statuscode") == 701 {
+		signKey := string(v.GetStringBytes("sign_key"))
+		signCheck := string(v.GetStringBytes("sign_check"))
+		signVal, err := hashFileRange(f, signCheck)
+		checkErr(err)
+
+		body, err = uploadSHA1(filename, fileSize, totalHash, signKey, signVal, targetCID)
+		checkErr(err)
+	}
 
 	return body, totalHash, nil
 }
