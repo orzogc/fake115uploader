@@ -53,9 +53,6 @@ var (
 	fastUpload      *bool
 	upload          *bool
 	multipartUpload *bool
-	hashFile        *string
-	inputFile       *string
-	outputFile      *string
 	configFile      *string
 	saveDir         *string
 	internal        *bool
@@ -387,9 +384,6 @@ func initialize() (e error) {
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要太长）")
-	hashFile = flag.String("b", "", "将指定文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）追加写入到指定的`保存文件`")
-	inputFile = flag.String("i", "", "从指定的`文本文件`逐行读取115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）并将其对应文件导入到115中，hashlink可以没有115://前缀")
-	outputFile = flag.String("o", "", "从cid指定的115文件夹导出该文件夹内（包括子文件夹）所有文件的115 hashlink（115://文件名|文件大小|文件HASH值|块HASH值）到指定的`保存文件`")
 	configFile = flag.String("l", "", "指定设置`文件`（json格式），默认是程序所在的文件夹里的fake115uploader.json")
 	saveDir = flag.String("d", "", "指定存放断点续传存档文件的`文件夹`，默认是程序所在的文件夹")
 	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
@@ -450,39 +444,6 @@ func initialize() (e error) {
 	if config.PartsNum > maxParts {
 		log.Printf("分片数量不能大于%d", maxParts)
 		os.Exit(1)
-	}
-
-	if *hashFile != "" {
-		info, err := os.Stat(*hashFile)
-		if !os.IsNotExist(err) {
-			if info.IsDir() {
-				log.Printf("%s 不能是文件夹", *hashFile)
-				os.Exit(1)
-			}
-		}
-	}
-
-	if *inputFile != "" {
-		info, err := os.Stat(*inputFile)
-		if os.IsNotExist(err) {
-			log.Printf("%s 不存在", *inputFile)
-			os.Exit(1)
-		} else {
-			if info.IsDir() {
-				log.Printf("%s 不能是文件夹", *inputFile)
-				os.Exit(1)
-			}
-		}
-	}
-
-	if *outputFile != "" {
-		info, err := os.Stat(*outputFile)
-		if !os.IsNotExist(err) {
-			if info.IsDir() {
-				log.Printf("%s 不能是文件夹", *outputFile)
-				os.Exit(1)
-			}
-		}
 	}
 
 	// 优先使用参数指定的Cookie
@@ -703,24 +664,6 @@ func main() {
 	}
 	// 等待一秒
 	time.Sleep(time.Second)
-
-	if *hashFile != "" {
-		err := write115Link()
-		checkErr(err)
-		log.Printf("成功将文件的115 hashlink保存在 %s", *hashFile)
-	}
-
-	if *outputFile != "" {
-		err := exportHashLink()
-		checkErr(err)
-		log.Printf("成功将cid为 %d 的文件夹内的所有文件的115 hashlink保存在 %s", config.CID, *outputFile)
-	}
-
-	if *inputFile != "" {
-		err := uploadLinkFile()
-		checkErr(err)
-		log.Printf("成功将 %s 里的115 hashlink导入到115", *inputFile)
-	}
 }
 
 // 上传文件

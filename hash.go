@@ -1,18 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"crypto/sha1"
 	"encoding/hex"
-	"flag"
 	"fmt"
 	"io"
-	"log"
 	"os"
-	"strconv"
 	"strings"
-
-	"github.com/valyala/fastjson"
 )
 
 // 计算文件指定范围内的sha1值
@@ -63,117 +57,4 @@ func hashSHA1(f *os.File) (blockHash, totalHash string, e error) {
 	totalHash = strings.ToUpper(hex.EncodeToString(h.Sum(nil)))
 
 	return blockHash, totalHash, nil
-}
-
-// 生成指定文件的115 hashlink
-func hash115Link(file string) (hashLink string, e error) {
-	defer func() {
-		if err := recover(); err != nil {
-			e = fmt.Errorf("hash115Link() error: %v", err)
-		}
-	}()
-
-	f, err := os.Open(file)
-	checkErr(err)
-	defer f.Close()
-
-	blockHash, totalHash, err := hashSHA1(f)
-	checkErr(err)
-	info, err := os.Stat(file)
-	checkErr(err)
-	hashLink = linkPrefix + info.Name() + "|" + strconv.FormatInt(info.Size(), 10) + "|" + totalHash + "|" + blockHash
-	return hashLink, nil
-}
-
-// 将指定文件的115 hashlink写入到保存文件内
-func write115Link() (e error) {
-	defer func() {
-		if err := recover(); err != nil {
-			e = fmt.Errorf("write115Link() error: %v", err)
-		}
-	}()
-
-	f, err := os.OpenFile(*hashFile, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-	checkErr(err)
-	defer f.Close()
-
-	for _, file := range flag.Args() {
-		log.Printf("开始生成 %s 的115 hashlink", file)
-		hashLink, err := hash115Link(file)
-		if err != nil {
-			log.Printf("生成 %s 的115 hashlink失败，出现错误：%v", file, err)
-			continue
-		}
-		_, err = f.WriteString(hashLink + "\n")
-		if err != nil {
-			log.Printf("将115 hashlink写入 %s 出现错误：%v", *hashFile, err)
-			continue
-		}
-	}
-
-	return nil
-}
-
-// 利用115 hashlink导入文件到115
-func upload115Link(hashLink string) (e error) {
-	defer func() {
-		if err := recover(); err != nil {
-			e = fmt.Errorf("upload115Link() error: %v", err)
-		}
-	}()
-
-	s := strings.TrimPrefix(hashLink, linkPrefix)
-	link := strings.Split(s, "|")
-
-	if len(link) != 4 || len(link[2]) != 40 || len(link[3]) != 40 {
-		panic(fmt.Errorf("%s 不符合115 hashlink的格式", hashLink))
-	}
-	if _, err := strconv.ParseUint(link[1], 10, 64); err != nil {
-		panic(fmt.Errorf("%s 不符合115 hashlink的格式", hashLink))
-	}
-
-	body, err := uploadSHA1(link[0], link[1], link[2], "", "", config.CID)
-	checkErr(err)
-
-	if *verbose {
-		log.Printf("秒传模式上传响应体的内容是：\n%s", string(body))
-	}
-
-	var p fastjson.Parser
-	v, err := p.ParseBytes(body)
-	checkErr(err)
-	if v.GetInt("status") == 2 && v.Exists("statuscode") && v.GetInt("statuscode") == 0 {
-		log.Printf("导入115 hashlink成功：%s", hashLink)
-	} else {
-		panic(fmt.Errorf("导入115 hashlink失败：%s", hashLink))
-	}
-
-	return nil
-}
-
-// 将文件里的115 hashlink导入到115
-func uploadLinkFile() (e error) {
-	defer func() {
-		if err := recover(); err != nil {
-			e = fmt.Errorf("uploadLinkFile() error: %v", err)
-		}
-	}()
-
-	f, err := os.Open(*inputFile)
-	checkErr(err)
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		err := upload115Link(scanner.Text())
-		if err != nil {
-			log.Printf("导入115 hashlink出现错误：%v", err)
-			result.Failed = append(result.Failed, scanner.Text())
-			continue
-		}
-		result.Success = append(result.Success, scanner.Text())
-	}
-	checkErr(scanner.Err())
-
-	return nil
 }
