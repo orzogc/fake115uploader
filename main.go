@@ -31,21 +31,22 @@ import (
 // sampleInitURL = "https://uplb.115.com/3.0/sampleinitupload.php"
 
 const (
-	infoURL      = "https://proapi.115.com/app/uploadinfo"
-	initURL      = "https://uplb.115.com/4.0/initupload.php?k_ec=%s"
-	getinfoURL   = "https://uplb.115.com/3.0/getuploadinfo.php"
-	listFileURL  = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
-	downloadURL  = "https://proapi.115.com/app/chrome/downurl"
-	orderURL     = "https://webapi.115.com/files/order"
-	createDirURL = "https://webapi.115.com/files/add"
-	searchURL    = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
-	appVer       = "30.5.1"
-	userAgent    = "Mozilla/5.0 115disk/" + appVer
-	endString    = "000000"
-	aliUserAgent = "aliyun-sdk-android/2.9.1"
-	linkPrefix   = "115://"
-	targetPrefix = "U_1_"
-	maxParts     = 10000
+	infoURL        = "https://proapi.115.com/app/uploadinfo"
+	initURL        = "https://uplb.115.com/4.0/initupload.php?k_ec=%s"
+	getinfoURL     = "https://uplb.115.com/3.0/getuploadinfo.php"
+	listFileURL    = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=0&limit=%d&natsort=1&format=json"
+	listFileDirURL = "https://webapi.115.com/files?aid=1&cid=%d&o=user_ptime&asc=0&offset=0&show_dir=1&limit=100000&natsort=1&format=json"
+	downloadURL    = "https://proapi.115.com/app/chrome/downurl"
+	orderURL       = "https://webapi.115.com/files/order"
+	createDirURL   = "https://webapi.115.com/files/add"
+	searchURL      = "https://webapi.115.com/files/search?offset=0&limit=100000&aid=1&cid=%d&format=json"
+	appVer         = "30.5.1"
+	userAgent      = "Mozilla/5.0 115disk/" + appVer
+	endString      = "000000"
+	aliUserAgent   = "aliyun-sdk-android/2.9.1"
+	linkPrefix     = "115://"
+	targetPrefix   = "U_1_"
+	maxParts       = 10000
 )
 
 var (
@@ -255,6 +256,34 @@ func getUserKey() (e error) {
 	return nil
 }
 
+// 根据文件夹名字查找文件夹
+func findDir(v *fastjson.Value, pid uint64, name string) (cid uint64, e error) {
+	list := v.GetArray("data")
+	for _, v := range list {
+		if v.Exists("fid") {
+			continue
+		}
+		parentID, err := strconv.ParseUint(string(v.GetStringBytes("pid")), 10, 64)
+		if err != nil {
+			continue
+		}
+		if parentID == pid && string(v.GetStringBytes("n")) == name {
+			cid, err = strconv.ParseUint(string(v.GetStringBytes("cid")), 10, 64)
+			if err != nil {
+				return 0, fmt.Errorf("查找文件夹 %s 失败：%v", name, err)
+			}
+			if *verbose {
+				log.Printf("文件夹 %s 已存在，cid：%d", name, cid)
+			}
+			orderFile(cid)
+
+			return cid, nil
+		}
+	}
+
+	return 0, fmt.Errorf("查找文件夹 %s 失败", name)
+}
+
 // 在115网盘指定文件夹里创建新文件夹
 func createDir(pid uint64, name string) (cid uint64, e error) {
 	defer func() {
@@ -275,6 +304,8 @@ func createDir(pid uint64, name string) (cid uint64, e error) {
 		if *verbose {
 			log.Printf("成功创建文件夹 %s ，cid：%d", name, cid)
 		}
+		orderFile(cid)
+
 		return cid, nil
 	}
 	// 要创建的文件夹已经存在
@@ -286,28 +317,34 @@ func createDir(pid uint64, name string) (cid uint64, e error) {
 		reqURL.RawQuery = query.Encode()
 		v, err := getURLJSON(reqURL.String())
 		checkErr(err)
+		cid, err = findDir(v, pid, name)
+		if err == nil {
+			return cid, nil
+		}
 
-		list := v.GetArray("data")
-		for _, v := range list {
-			if v.Exists("fid") {
-				continue
-			}
-			parentID, err := strconv.ParseUint(string(v.GetStringBytes("pid")), 10, 64)
-			if err != nil {
-				continue
-			}
-			if parentID == pid && string(v.GetStringBytes("n")) == name {
-				cid, err = strconv.ParseUint(string(v.GetStringBytes("cid")), 10, 64)
-				checkErr(err)
-				if *verbose {
-					log.Printf("文件夹 %s 已存在，cid：%d", name, cid)
-				}
-				return cid, nil
-			}
+		// 如果搜索的文件夹不存在，就直接查找
+		fileURL := fmt.Sprintf(listFileDirURL, pid)
+		v, err = getURLJSON(fileURL)
+		checkErr(err)
+		cid, err = findDir(v, pid, name)
+		if err == nil {
+			return cid, nil
 		}
 	}
 
 	return 0, fmt.Errorf("创建文件夹 %s 失败", name)
+}
+
+// 将cid对应文件夹设置为时间降序
+func orderFile(cid uint64) {
+	orderBody := fmt.Sprintf("user_order=user_ptime&file_id=%d&user_asc=0&fc_mix=0", cid)
+	v, err := postFormJSON(orderURL, orderBody)
+	checkErr(err)
+	if !v.GetBool("state") {
+		panic(fmt.Sprintf("排序文件夹 %d 出现错误：%v", cid, v.GetStringBytes("error")))
+	} else if *verbose {
+		log.Printf("排序文件夹 %d 成功", cid)
+	}
 }
 
 // 读取设置文件
@@ -538,15 +575,7 @@ func initialize() (e error) {
 	}
 
 	if len(flag.Args()) != 0 && (*upload || *multipartUpload) {
-		// 将cid对应文件夹设置为时间降序
-		orderBody := fmt.Sprintf("user_order=user_ptime&file_id=%d&user_asc=0&fc_mix=0", config.CID)
-		v, err := postFormJSON(orderURL, orderBody)
-		checkErr(err)
-		if !v.GetBool("state") {
-			panic(fmt.Sprintf("排序文件夹 %d 出现错误：%v", config.CID, v.GetStringBytes("error")))
-		} else if *verbose {
-			log.Printf("排序文件夹 %d 成功", config.CID)
-		}
+		orderFile(config.CID)
 	}
 
 	ecdhCipher, err = cipher.NewEcdhCipher()

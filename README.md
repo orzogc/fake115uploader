@@ -8,11 +8,11 @@
 * 支持显示上传进度条
 
 ### 编译安装
-安装最新稳定版本，运行：
+安装最新稳定版本，请用最新版本的Go运行：
 
 `go install github.com/orzogc/fake115uploader@latest`
 
-安装最新git版本，运行：
+安装最新git版本，请用最新版本的Go运行：
 
 `go install github.com/orzogc/fake115uploader@master`
 

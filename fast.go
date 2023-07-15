@@ -153,6 +153,10 @@ func (file *fileInfo) uploadFileSHA1() (body []byte, fileSHA1 string, e error) {
 	v, err := p.ParseBytes(body)
 	checkErr(err)
 	if v.GetInt("status") == 7 && v.GetInt("statuscode") == 701 {
+		if *verbose {
+			log.Printf("秒传模式上传文件 %s 的响应体的内容是：\n%s", file.Path, string(body))
+		}
+
 		signKey := string(v.GetStringBytes("sign_key"))
 		signCheck := string(v.GetStringBytes("sign_check"))
 		signVal, err := hashFileRange(f, signCheck)
