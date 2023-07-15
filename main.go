@@ -313,10 +313,15 @@ func createDir(pid uint64, name string) (cid uint64, e error) {
 		query.Set("search_value", name)
 		reqURL.RawQuery = query.Encode()
 		v, err := getURLJSON(reqURL.String())
-		checkErr(err)
-		cid, err = findDir(v, pid, name)
+		// 请求有可能返回空body
 		if err == nil {
-			return cid, nil
+			cid, err = findDir(v, pid, name)
+			if err == nil {
+				return cid, nil
+			}
+		}
+		if *verbose {
+			log.Printf("搜索文件夹失败，改为直接查找文件夹：%v", err)
 		}
 
 		// 如果搜索的文件夹不存在，就直接查找
