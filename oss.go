@@ -36,7 +36,7 @@ type ossToken struct {
 // 进度监听
 type ossProgressListener struct{}
 
-// 实现oss.ProgressListener的接口
+// 实现 oss.ProgressListener 的接口
 func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	switch event.EventType {
 	case oss.TransferStartedEvent:
@@ -51,7 +51,7 @@ func (listener *ossProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	}
 }
 
-// 获取网页请求响应的json
+// 获取网页请求响应的 json
 func getURLJSON(url string) (v *fastjson.Value, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -68,7 +68,7 @@ func getURLJSON(url string) (v *fastjson.Value, e error) {
 	return v, nil
 }
 
-// 获取POST表单请求响应的json
+// 获取 POST 表单请求响应的 json
 func postFormJSON(url string, formStr string) (v *fastjson.Value, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -93,7 +93,7 @@ func postFormJSON(url string, formStr string) (v *fastjson.Value, e error) {
 	return v, nil
 }
 
-// 以GET请求获取网页内容
+// 以 GET 请求获取网页内容
 func getURL(url string) (body []byte, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -114,7 +114,7 @@ func getURL(url string) (body []byte, e error) {
 	return body, nil
 }
 
-// 获取oss的token
+// 获取 oss 的 token
 func getOSSToken() (token *ossToken, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -136,7 +136,7 @@ func getOSSToken() (token *ossToken, e error) {
 	}
 
 	if *verbose {
-		log.Printf("info的值：\n%+v", info)
+		log.Printf("info 的值：\n%+v", info)
 	}
 
 	body, err = getURL(info.GetTokenURL)
@@ -145,13 +145,13 @@ func getOSSToken() (token *ossToken, e error) {
 	checkErr(err)
 
 	if *verbose {
-		log.Printf("OSS token的值：\n%+v", token)
+		log.Printf("OSS token 的值：\n%+v", token)
 	}
 
 	return token, nil
 }
 
-// 获取oss客户端选项
+// 获取 oss 客户端选项
 func getClientOptions() (options []oss.ClientOption) {
 	if proxyHost != "" {
 		if proxyUser != "" {
@@ -164,7 +164,7 @@ func getClientOptions() (options []oss.ClientOption) {
 	return options
 }
 
-// 利用oss的接口上传文件
+// 利用 oss 的接口上传文件
 func ossUploadFile(ft *fastToken, file string) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -191,7 +191,7 @@ func ossUploadFile(ft *fastToken, file string) (e error) {
 		oss.Progress(&ossProgressListener{}),
 	}
 
-	fmt.Println("按q键停止上传并退出程序")
+	fmt.Println("按 q 键停止上传并退出程序")
 	err = bucket.PutObjectFromFile(ft.Object, file, options...)
 	checkErr(err)
 

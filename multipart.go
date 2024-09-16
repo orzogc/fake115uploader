@@ -29,7 +29,7 @@ type saveProgress struct {
 type multipartProgressListener struct {
 }
 
-// 实现oss.ProgressListener的接口
+// 实现 oss.ProgressListener 的接口
 func (listener *multipartProgressListener) ProgressChanged(event *oss.ProgressEvent) {
 	switch event.EventType {
 	case oss.TransferStartedEvent:
@@ -41,7 +41,7 @@ func (listener *multipartProgressListener) ProgressChanged(event *oss.ProgressEv
 	}
 }
 
-// 获取ossToken和bucket
+// 获取 ossToken 和 bucket
 func getBucket(bucketName string) (ot *ossToken, bucket *oss.Bucket, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -58,7 +58,7 @@ func getBucket(bucketName string) (ot *ossToken, bucket *oss.Bucket, e error) {
 	return ot, bucket, nil
 }
 
-// 利用oss的接口以multipart的方式上传文件，sp不为nil时恢复上次的上传
+// 利用 oss 的接口以 multipart 的方式上传文件，sp 不为 nil 时恢复上次的上传
 func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -89,7 +89,7 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 
 	ot, bucket, err := getBucket(ft.Bucket)
 	checkErr(err)
-	// ossToken一小时后就会失效，所以每50分钟重新获取一次
+	// ossToken 一小时后就会失效，所以每 50 分钟重新获取一次
 	ticker := time.NewTicker(50 * time.Minute)
 	defer ticker.Stop()
 
@@ -103,12 +103,12 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 	checkErr(err)
 
 	if sp == nil {
-		// 断点续传模式上传的文件大小不能小于1KB（1KB这个大小属于推测，没详细测试过）
+		// 断点续传模式上传的文件大小不能小于 1KB（1KB 这个大小属于推测，没详细测试过）
 		if info.Size() <= 1024 {
 			log.Printf("%s 的大小小于1KB，改用普通模式上传", file)
 			return ossUploadFile(ft, file)
 		}
-		// 上传的文件大小不能超过115GB
+		// 上传的文件大小不能超过 115GB
 		if info.Size() > 115*1024*1024*1024 {
 			return fmt.Errorf("%s 的大小超过115GB，取消上传", file)
 		}
@@ -119,19 +119,19 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 		} else {
 			for i := int64(1); i < 10; i++ {
 				if info.Size() < i*1024*1024*1024 {
-					// 文件大小小于iGB时分为i*1000片
+					// 文件大小小于 iGB 时分为 i*1000 片
 					chunks, err = oss.SplitFileByPartNum(file, int(i*1000))
 					checkErr(err)
 					break
 				}
 			}
 			if info.Size() > 9*1024*1024*1024 {
-				// 文件大小大于9GB时分为10000片
+				// 文件大小大于 9GB 时分为 10000 片
 				chunks, err = oss.SplitFileByPartNum(file, maxParts)
 				checkErr(err)
 			}
 		}
-		// 单个分片大小不能小于100KB
+		// 单个分片大小不能小于 100KB
 		if chunks[0].Size < 100*1024 {
 			chunks, err = oss.SplitFileByPartSize(file, 100*1024)
 			checkErr(err)
@@ -143,7 +143,7 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 		checkErr(err)
 	}
 
-	fmt.Println("按q键停止上传并退出程序，断点续传模式会自动保存上传进度")
+	fmt.Println("按 q 键停止上传并退出程序，断点续传模式会自动保存上传进度")
 	bar = pb.New64(info.Size()).SetTemplate(pb.Full).Set(pb.Bytes, true)
 	if sp != nil {
 		bar.SetCurrent(int64(len(sp.Parts)) * sp.Chunks[0].Size)
@@ -176,11 +176,11 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 			return errStopUpload
 		default:
 			var part oss.UploadPart
-			// 出现错误就继续尝试，共尝试3次
+			// 出现错误就继续尝试，共尝试 3 次
 			for retry := 0; retry < 3; retry++ {
 				select {
 				case <-ticker.C:
-					// 到时重新获取ossToken
+					// 到时重新获取 ossToken
 					ot, bucket, err = getBucket(ft.Bucket)
 					checkErr(err)
 				default:
@@ -202,7 +202,7 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 			}
 			if err != nil {
 				bar.Finish()
-				// 分片上传出现3次错误则保存上传进度
+				// 分片上传出现 3 次错误则保存上传进度
 				log.Printf("正在保存 %s 的上传进度，存档文件是 %s", file, saveFile)
 				sp = &saveProgress{FastToken: ft, Chunks: chunks, Imur: imur, Parts: parts}
 				data, err := json.Marshal(*sp)
@@ -220,7 +220,7 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 
 	select {
 	case <-ticker.C:
-		// 到时重新获取ossToken
+		// 到时重新获取 ossToken
 		ot, bucket, err = getBucket(ft.Bucket)
 		checkErr(err)
 	default:
@@ -233,16 +233,16 @@ func multipartUploadFile(ft *fastToken, file string, sp *saveProgress) (e error)
 		oss.UserAgentHeader(aliUserAgent),
 		oss.GetResponseHeader(&header),
 	)
-	// EOF错误是xml的Unmarshal导致的，响应其实是json格式，所以实际上上传是成功的
+	// EOF 错误是 xml 的 Unmarshal 导致的，响应其实是 json 格式，所以实际上上传是成功的
 	if err != nil && !errors.Is(err, io.EOF) {
-		// 当文件名含有 &< 这两个字符之一时响应的xml解析会出现错误，实际上上传是成功的
+		// 当文件名含有 &< 这两个字符之一时响应的 xml 解析会出现错误，实际上上传是成功的
 		if filename := filepath.Base(file); !strings.ContainsAny(filename, "&<") {
 			panic(err)
 		}
 	}
 	if *verbose {
-		log.Printf("CompleteMultipartUpload的响应头的值是：\n%+v", header)
-		log.Printf("cmur的值是：%+v", cmur)
+		log.Printf("CompleteMultipartUpload 的响应头的值是：\n%+v", header)
+		log.Printf("cmur 的值是：%+v", cmur)
 	}
 
 	time.Sleep(time.Second)

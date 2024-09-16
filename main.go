@@ -76,12 +76,12 @@ var (
 
 // 设置数据
 type uploadConfig struct {
-	Cookies   string `json:"cookies"`   // 115网页版的Cookie
-	CID       uint64 `json:"cid"`       // 115里文件夹的cid
+	Cookies   string `json:"cookies"`   // 115 网页版的 Cookie
+	CID       uint64 `json:"cid"`       // 115 里文件夹的 cid
 	ResultDir string `json:"resultDir"` // 在指定文件夹保存上传结果
-	HTTPRetry uint   `json:"httpRetry"` // HTTP请求失败后的重试次数
-	HTTPProxy string `json:"httpProxy"` // HTTP代理
-	OSSProxy  string `json:"ossProxy"`  // OSS上传代理
+	HTTPRetry uint   `json:"httpRetry"` // HTTP 请求失败后的重试次数
+	HTTPProxy string `json:"httpProxy"` // HTTP 代理
+	OSSProxy  string `json:"ossProxy"`  // OSS 上传代理
 	PartsNum  uint   `json:"partsNum"`  // 断点续传的分片数量
 }
 
@@ -95,7 +95,7 @@ type resultData struct {
 // 要上传的文件的信息
 type fileInfo struct {
 	Path     string `json:"path"`     // 文件路径
-	ParentID uint64 `json:"parentID"` // 要上传到的文件夹的cid
+	ParentID uint64 `json:"parentID"` // 要上传到的文件夹的 cid
 }
 
 // 检查错误
@@ -204,25 +204,25 @@ func exitPrint() {
 	}
 }
 
-// 进行http请求
+// 进行 http 请求
 func doRequest(req *http.Request) (resp *http.Response, err error) {
 	for i := 0; i < int(config.HTTPRetry+1); i++ {
 		resp, err = httpClient.Do(req)
 		if err == nil {
 			return resp, nil
 		} else if *verbose {
-			log.Printf("http请求出现错误：%v", err)
+			log.Printf("http 请求出现错误：%v", err)
 		}
 	}
 
-	return nil, fmt.Errorf("http请求出现错误：%w", err)
+	return nil, fmt.Errorf("http 请求出现错误：%w", err)
 }
 
-// 获取userID和userKey
+// 获取 userID 和 userKey
 func getUserKey() (e error) {
 	defer func() {
 		if err := recover(); err != nil {
-			log.Println("请确定网络是否畅通或者cookies是否设置好，每一次登陆网页端115都要重设一次cookies")
+			log.Println("请确定网络是否畅通或者 cookies 是否设置好，每一次登陆网页端 115 都要重设一次 cookies")
 			e = fmt.Errorf("getUserKey() error: %v", err)
 		}
 	}()
@@ -244,7 +244,7 @@ func getUserKey() (e error) {
 	userKey = string(v.GetStringBytes("userkey"))
 
 	if userID == "0" {
-		panic(fmt.Errorf("获取userkey出错，请确定cookies是否设置好"))
+		panic(fmt.Errorf("获取 userkey 出错，请确定 cookies 是否设置好"))
 	}
 
 	if *verbose {
@@ -281,7 +281,7 @@ func findDir(v *fastjson.Value, pid uint64, name string) (cid uint64, e error) {
 	return 0, fmt.Errorf("查找文件夹 %s 失败", name)
 }
 
-// 在115网盘指定文件夹里创建新文件夹
+// 在 115 网盘指定文件夹里创建新文件夹
 func createDir(pid uint64, name string) (cid uint64, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -313,7 +313,7 @@ func createDir(pid uint64, name string) (cid uint64, e error) {
 		query.Set("search_value", name)
 		reqURL.RawQuery = query.Encode()
 		v, err := getURLJSON(reqURL.String())
-		// 请求有可能返回空body
+		// 请求有可能返回空 body
 		if err == nil {
 			cid, err = findDir(v, pid, name)
 			if err == nil {
@@ -337,7 +337,7 @@ func createDir(pid uint64, name string) (cid uint64, e error) {
 	return 0, fmt.Errorf("创建文件夹 %s 失败", name)
 }
 
-// 将cid对应文件夹设置为时间降序
+// 将 cid 对应文件夹设置为时间降序
 func orderFile(cid uint64) {
 	orderBody := fmt.Sprintf("user_order=user_ptime&file_id=%d&user_asc=0&fc_mix=0", cid)
 	v, err := postFormJSON(orderURL, orderBody)
@@ -389,19 +389,19 @@ func initialize() (e error) {
 	fastUpload = flag.Bool("f", false, "秒传模式上传`文件`")
 	upload = flag.Bool("u", false, "先尝试用秒传模式上传`文件`，失败后改用普通模式上传")
 	multipartUpload = flag.Bool("m", false, "先尝试用秒传模式上传`文件`，失败后改用断点续传模式上传，可以随时中断上传再重启上传（适合用于上传超大文件，注意暂停上传的时间不要太长）")
-	configFile = flag.String("l", "", "指定设置`文件`（json格式），默认是程序所在的文件夹里的fake115uploader.json")
+	configFile = flag.String("l", "", "指定设置`文件`（json 格式），默认是程序所在的文件夹里的 fake115uploader.json")
 	saveDir = flag.String("d", "", "指定存放断点续传存档文件的`文件夹`，默认是程序所在的文件夹")
-	cookies := flag.String("k", "", "使用指定的115的`Cookie`")
-	cid := flag.Uint64("c", 1, "上传文件到指定的115文件夹，`cid`为115里的文件夹对应的cid(默认为0，即根目录）")
+	cookies := flag.String("k", "", "使用指定的 115 的`Cookie`")
+	cid := flag.Uint64("c", 1, "上传文件到指定的 115 文件夹，`cid`为 115 里的文件夹对应的 cid(默认为 0，即根目录）")
 	resultDir := flag.String("r", "", "将上传结果保存在指定`文件夹`")
 	noConfig := flag.Bool("n", false, "不读取设置文件，需要和 -k 配合使用")
 	internal = flag.Bool("a", false, "利用阿里云内网上传文件，需要在阿里云服务器上运行本程序")
 	removeFile = flag.Bool("e", false, "上传成功后自动删除原文件")
-	httpProxy := flag.String("http-proxy", "", "指定HTTP`代理`")
-	ossProxy := flag.String("oss-proxy", "", "指定OSS上传使用的`代理`")
-	httpRetry := flag.Uint("http-retry", 0, "HTTP请求失败后的`重试次数`，默认为0（即不重试）")
+	httpProxy := flag.String("http-proxy", "", "指定 HTTP`代理`")
+	ossProxy := flag.String("oss-proxy", "", "指定 OSS 上传使用的`代理`")
+	httpRetry := flag.Uint("http-retry", 0, "HTTP 请求失败后的`重试次数`，默认为 0（即不重试）")
 	recursive = flag.Bool("recursive", false, "递归上传文件夹")
-	partsNum := flag.Uint("parts-num", 0, "断点续传模式上传文件的`分片数量`，范围为1到10000，默认为0（即自动分片）")
+	partsNum := flag.Uint("parts-num", 0, "断点续传模式上传文件的`分片数量`，范围为 1 到 10000，默认为 0（即自动分片）")
 	verbose = flag.Bool("v", false, "显示更详细的信息（调试用）")
 	help := flag.Bool("h", false, "显示帮助信息")
 
@@ -434,12 +434,12 @@ func initialize() (e error) {
 		os.Exit(0)
 	}
 	if (*fastUpload && *upload) || (*fastUpload && *multipartUpload) || (*upload && *multipartUpload) {
-		log.Println("-f、-u和-m这三个参数只能同时使用其中一个")
+		log.Println("-f、-u 和-m 这三个参数只能同时使用其中一个")
 		os.Exit(1)
 	}
 
 	if *partsNum != 0 && !*multipartUpload {
-		log.Println("-parts-num参数只支持断点续传模式")
+		log.Println("-parts-num 参数只支持断点续传模式")
 		os.Exit(1)
 	}
 	// 优先使用参数指定的分片数量
@@ -451,7 +451,7 @@ func initialize() (e error) {
 		os.Exit(1)
 	}
 
-	// 优先使用参数指定的Cookie
+	// 优先使用参数指定的 Cookie
 	if *cookies != "" {
 		config.Cookies = *cookies
 	}
@@ -463,7 +463,7 @@ func initialize() (e error) {
 		log.Printf("Cookies的值为：%s", config.Cookies)
 	}
 
-	// 优先使用参数指定的cid
+	// 优先使用参数指定的 cid
 	if *cid != 1 {
 		config.CID = *cid
 	}
@@ -481,15 +481,12 @@ func initialize() (e error) {
 		}
 	}
 
-	// 优先使用参数指定的HTTP请求重试次数
+	// 优先使用参数指定的 HTTP 请求重试次数
 	if *httpRetry != 0 {
 		config.HTTPRetry = *httpRetry
 	}
 
-	err := getUserKey()
-	checkErr(err)
-
-	// HTTP代理，优先级 httpProxy > 设置文件 > http_proxy/https_proxy
+	// HTTP 代理，优先级 httpProxy > 设置文件 > http_proxy/https_proxy
 	*httpProxy = strings.TrimSpace(*httpProxy)
 	if *httpProxy == "" {
 		*httpProxy = strings.TrimSpace(config.HTTPProxy)
@@ -514,7 +511,7 @@ func initialize() (e error) {
 		}
 	}
 
-	// OSS代理，优先级 ossProxy > 设置文件 > http_proxy > https_proxy
+	// OSS 代理，优先级 ossProxy > 设置文件 > http_proxy > https_proxy
 	*ossProxy = strings.TrimSpace(*ossProxy)
 	if *ossProxy == "" {
 		*ossProxy = strings.TrimSpace(config.OSSProxy)
@@ -539,6 +536,9 @@ func initialize() (e error) {
 			log.Printf("解析OSS代理地址出现错误：%v", err)
 		}
 	}
+
+	err := getUserKey()
+	checkErr(err)
 
 	if len(flag.Args()) != 0 && (*upload || *multipartUpload) {
 		orderFile(config.CID)

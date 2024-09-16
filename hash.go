@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-// 计算文件指定范围内的sha1值
+// 计算文件指定范围内的 sha1 值
 func hashFileRange(f *os.File, signCheck string) (rangeHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -33,7 +33,7 @@ func hashFileRange(f *os.File, signCheck string) (rangeHash string, e error) {
 	return strings.ToUpper(hex.EncodeToString(h.Sum(nil))), nil
 }
 
-// 计算文件的sha1值
+// 计算文件的 sha1 值
 func hashSHA1(f *os.File) (blockHash, totalHash string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -41,7 +41,7 @@ func hashSHA1(f *os.File) (blockHash, totalHash string, e error) {
 		}
 	}()
 
-	// 计算文件最前面一个区块的sha1 hash值
+	// 计算文件最前面一个区块的 sha1 hash 值
 	block := make([]byte, 128*1024)
 	n, err := f.Read(block)
 	checkErr(err)
@@ -50,7 +50,7 @@ func hashSHA1(f *os.File) (blockHash, totalHash string, e error) {
 	_, err = f.Seek(0, io.SeekStart)
 	checkErr(err)
 
-	// 计算整个文件的sha1 hash值
+	// 计算整个文件的 sha1 hash 值
 	h := sha1.New()
 	_, err = io.Copy(h, f)
 	checkErr(err)

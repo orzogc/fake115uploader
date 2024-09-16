@@ -61,7 +61,7 @@ type RsaKey struct {
 	privateKey *rsa.PrivateKey
 }
 
-// NewRsaKey 新建Key
+// NewRsaKey 新建 Key
 func NewRsaKey() (*RsaKey, error) {
 	k := new(RsaKey)
 	block, _ := pem.Decode([]byte(publicRsaKey))
@@ -85,14 +85,14 @@ func NewRsaKey() (*RsaKey, error) {
 	return k, nil
 }
 
-// RsaCipher RSA加密解密信息
+// RsaCipher RSA 加密解密信息
 type RsaCipher struct {
 	key     *RsaKey
 	randKey []byte
 	keyS    []byte
 }
 
-// NewRsaCipher 新建RsaCipher
+// NewRsaCipher 新建 RsaCipher
 func NewRsaCipher(key *RsaKey) *RsaCipher {
 	c := new(RsaCipher)
 	c.key = key
@@ -101,7 +101,7 @@ func NewRsaCipher(key *RsaKey) *RsaCipher {
 	return c
 }
 
-// 生成key
+// 生成 key
 func (c *RsaCipher) genKey() error {
 	_, err := rand.Read(c.randKey)
 	if err != nil {
@@ -167,7 +167,7 @@ func (c *RsaCipher) Decrypt(cipherText []byte) ([]byte, error) {
 	return plainText, nil
 }
 
-// 生成key
+// 生成 key
 func genKey(randKey []byte, keyLen int) []byte {
 	xorKey := make([]byte, 0, keyLen)
 	length := keyLen * (keyLen - 1)
@@ -184,7 +184,7 @@ func genKey(randKey []byte, keyLen int) []byte {
 	return xorKey
 }
 
-// 利用key进行异或操作
+// 利用 key 进行异或操作
 func xor(src, key []byte) []byte {
 	secret := make([]byte, 0, len(src))
 	pad := len(src) % 4
@@ -207,14 +207,14 @@ func xor(src, key []byte) []byte {
 	return secret
 }
 
-// EcdhCipher ECDH加密解密信息
+// EcdhCipher ECDH 加密解密信息
 type EcdhCipher struct {
 	key    []byte
 	iv     []byte
 	pubKey []byte
 }
 
-// NewEcdhCipher 新建EcdhCipher
+// NewEcdhCipher 新建 EcdhCipher
 func NewEcdhCipher() (*EcdhCipher, error) {
 	x := big.NewInt(0).SetBytes(remotePubKey[:p224BaseLen])
 	y := big.NewInt(0).SetBytes(remotePubKey[p224BaseLen:])
@@ -233,7 +233,7 @@ func NewEcdhCipher() (*EcdhCipher, error) {
 			buf = append([]byte{p224BaseLen + 1, 0x02}, buf...)
 		}
 	default:
-		return nil, fmt.Errorf("错误的public key类型")
+		return nil, fmt.Errorf("错误的 public key 类型")
 	}
 	if err != nil {
 		return nil, err
@@ -307,7 +307,7 @@ func (c *EcdhCipher) Decrypt(cipherText []byte) (text []byte, e error) {
 	return text[:l], nil
 }
 
-// EncodeToken 加密token
+// EncodeToken 加密 token
 func (c *EcdhCipher) EncodeToken(timestamp int64) (string, error) {
 	random, err := rand.Int(rand.Reader, big.NewInt(256))
 	if err != nil {

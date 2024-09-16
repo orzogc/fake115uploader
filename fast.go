@@ -45,12 +45,12 @@ type fastToken struct {
 	Bucket     string   `json:"bucket"`
 	Object     string   `json:"object"`
 	Callback   callback `json:"callback"`
-	SHA1       string   // 文件的sha1 hash值
+	SHA1       string   // 文件的 sha1 hash 值
 }
 
 const md5Salt = "Qclm8MGWUv59TnrR0XPg"
 
-// 上传SHA1的值到115
+// 上传 SHA1 的值到 115
 func uploadSHA1(filename, fileSize, totalHash, signKey, signVal string, targetCID uint64) (body []byte, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -125,7 +125,7 @@ func uploadSHA1(filename, fileSize, totalHash, signKey, signVal string, targetCI
 	return decrypted, nil
 }
 
-// 利用文件的sha1 hash值上传文件获取响应
+// 利用文件的 sha1 hash 值上传文件获取响应
 func (file *fileInfo) uploadFileSHA1() (body []byte, fileSHA1 string, e error) {
 	defer func() {
 		if err := recover(); err != nil {
@@ -198,7 +198,7 @@ func (file *fileInfo) fastUploadFile() (token *fastToken, e error) {
 			checkErr(err)
 		}
 	} else if v.GetInt("status") == 1 && v.Exists("statuscode") && v.GetInt("statuscode") == 0 {
-		// 秒传失败的响应包含普通上传模式和断点续传模式的token
+		// 秒传失败的响应包含普通上传模式和断点续传模式的 token
 		err = json.Unmarshal(body, &token)
 		checkErr(err)
 
