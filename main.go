@@ -589,6 +589,10 @@ func main() {
 					path = filepath.Clean(path)
 
 					if d.IsDir() {
+
+						// 等待一秒
+						time.Sleep(time.Second)
+
 						if err != nil {
 							log.Printf("获取文件夹 %s 的信息出现错误，取消上传该文件夹：%v", path, err)
 							return fs.SkipDir
