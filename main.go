@@ -121,7 +121,6 @@ func getInput(ctx context.Context) {
 
 	eventCh, err := keyboard.GetKeys(10)
 	checkErr(err)
-	defer keyboard.Close()
 
 	for {
 		select {
@@ -134,6 +133,28 @@ func getInput(ctx context.Context) {
 				return
 			}
 		}
+	}
+}
+
+func closeKeybord() {
+	ch := make(chan struct{}, 1)
+	defer close(ch)
+
+	go func() {
+		err := keyboard.Close()
+		if err != nil {
+			log.Printf("关闭 keyboard 出现错误：%v", err)
+		}
+
+		ch <- struct{}{}
+	}()
+
+	select {
+	case <-ch:
+		return
+	case <-time.After(5 * time.Second):
+		log.Println("关闭 keyboard 超时，强制退出")
+		os.Exit(1)
 	}
 }
 
@@ -157,7 +178,7 @@ func handleQuit() {
 		<-multipartCh
 	}
 
-	keyboard.Close()
+	closeKeybord()
 	exitPrint()
 	if len(result.Failed) != 0 {
 		os.Exit(1)
@@ -565,7 +586,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	go getInput(ctx)
-	defer keyboard.Close()
+	defer closeKeybord()
 
 	defer exitPrint()
 
