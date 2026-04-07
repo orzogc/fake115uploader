@@ -85,11 +85,17 @@ type uploadConfig struct {
 	PartsNum  uint   `json:"partsNum"`  // 断点续传的分片数量
 }
 
+// 上传失败的文件信息
+type failedFile struct {
+	Path string `json:"path"` // 上传文件的路径
+	CID  uint64 `json:"cid"`  // 上传文件的 115 父文件夹 cid
+}
+
 // 上传结果数据
 type resultData struct {
-	Success []string `json:"success"` // 上传成功的文件
-	Failed  []string `json:"failed"`  // 上传失败的文件
-	Saved   []string `json:"saved"`   // 保存上传进度的文件
+	Success []string     `json:"success"` // 上传成功的文件
+	Failed  []failedFile `json:"failed"`  // 上传失败的文件
+	Saved   []string     `json:"saved"`   // 保存上传进度的文件
 }
 
 // 要上传的文件的信息
@@ -216,8 +222,8 @@ func exitPrint() {
 		fmt.Println(s)
 	}
 	fmt.Printf("上传失败的文件（%d）：\n", len(result.Failed))
-	for _, s := range result.Failed {
-		fmt.Println(s)
+	for _, f := range result.Failed {
+		fmt.Printf("  文件：%s，cid：%d\n", f.Path, f.CID)
 	}
 	fmt.Printf("保存上传进度的文件（%d）：\n", len(result.Saved))
 	for _, s := range result.Saved {
@@ -703,7 +709,7 @@ func (file *fileInfo) uploadFile() {
 		_, err := file.fastUploadFile()
 		if err != nil {
 			log.Printf("秒传模式上传 %s 出现错误：%v", file.Path, err)
-			result.Failed = append(result.Failed, file.Path)
+			result.Failed = append(result.Failed, failedFile{Path: file.Path, CID: file.ParentID})
 			return
 		}
 		result.Success = append(result.Success, file.Path)
@@ -715,7 +721,7 @@ func (file *fileInfo) uploadFile() {
 			err := ossUploadFile(token, file.Path)
 			if err != nil {
 				log.Printf("普通模式上传 %s 出现错误：%v", file.Path, err)
-				result.Failed = append(result.Failed, file.Path)
+				result.Failed = append(result.Failed, failedFile{Path: file.Path, CID: file.ParentID})
 				return
 			}
 		}
@@ -735,7 +741,7 @@ func (file *fileInfo) uploadFile() {
 						return
 					}
 					log.Printf("断点续传模式上传 %s 出现错误：%v", file.Path, err)
-					result.Failed = append(result.Failed, file.Path)
+					result.Failed = append(result.Failed, failedFile{Path: file.Path, CID: file.ParentID})
 					return
 				}
 			}
@@ -743,7 +749,7 @@ func (file *fileInfo) uploadFile() {
 		} else {
 			if info.IsDir() {
 				log.Printf("%s 不能是文件夹", saveFile)
-				result.Failed = append(result.Failed, file.Path)
+				result.Failed = append(result.Failed, failedFile{Path: file.Path, CID: file.ParentID})
 				return
 			}
 			log.Printf("发现文件 %s 的上传曾经中断过，现在开始断点续传", file.Path)
@@ -753,7 +759,7 @@ func (file *fileInfo) uploadFile() {
 					return
 				}
 				log.Printf("断点续传模式上传 %s 出现错误：%v", file.Path, err)
-				result.Failed = append(result.Failed, file.Path)
+				result.Failed = append(result.Failed, failedFile{Path: file.Path, CID: file.ParentID})
 				return
 			}
 			result.Success = append(result.Success, file.Path)
